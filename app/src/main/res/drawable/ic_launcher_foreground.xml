@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 渐变点击波纹环 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#6C5CE7"
+        android:strokeWidth="3.5"
+        android:pathData="M54,34 A20,20 0 1,1 53.9,34" />
+    <!-- 点击核心亮点 -->
+    <path
+        android:fillColor="#00F2FE"
+        android:pathData="M54,49 A5,5 0 1,1 53.9,49" />
+    <!-- 极客风格的光标指针 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#1E1E2E"
+        android:strokeWidth="1.5"
+        android:pathData="M54,54 L68,68 L61,70 L57,78 Z" />
+</vector>
