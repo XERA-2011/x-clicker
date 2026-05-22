@@ -1,0 +1,64 @@
+# Built application files
+*.apk
+*.aar
+*.ap_
+*.aab
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+build/
+
+# Gradle files
+.gradle/
+gradle/wrapper/gradle-wrapper.jar
+
+# Local configuration file
+local.properties
+
+# Android Studio
+*.iml
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/dictionaries
+.idea/libraries
+.idea/caches/
+.idea/codeStyles/
+.idea/appInsightsSettings.xml
+.idea/deploymentTargetSelector.xml
+.idea/other.xml
+.idea/render.experimental.xml
+
+# Keystore files
+*.jks
+*.keystore
+
+# Google Services (optional)
+google-services.json
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Captures
+captures/
+
+# intellij
+*.iws
+
+# Kotlin
+.kotlin/
+
+# Test rule files
+combined_lee_jump_rules.json
+gkd_full_rules.json
+gkd_simplified_rules.json

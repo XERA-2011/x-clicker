@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">x-clicker</string>
+    <string name="accessibility_service_label">x-clicker 自动点击服务</string>
+    <string name="accessibility_service_description">x-clicker 需要无障碍权限来检测屏幕内容并自动执行点击操作。此服务仅在启用时运行，不会收集或上传任何个人数据。</string>
+    <string name="service_running">运行中</string>
+    <string name="service_stopped">已停止</string>
+    <string name="rules_loaded">已加载 %d 条规则</string>
+    <string name="import_rules">导入规则</string>
+    <string name="export_rules">导出规则</string>
+    <string name="clear_rules">清空规则</string>
+    <string name="settings">设置</string>
+    <string name="about">关于</string>
+    <string name="global_delay">全局延迟</string>
+    <string name="global_delay_ms">%d 毫秒</string>
+    <string name="enable_service_hint">请先在系统设置中启用 x-clicker 无障碍服务</string>
+    <string name="go_to_settings">前往设置</string>
+    <string name="version_info">版本</string>
+    <string name="no_rules">暂无规则，请导入李跳跳格式的规则文件</string>
+    <string name="import_success">成功导入 %d 条规则</string>
+    <string name="import_failed">导入失败：格式不正确</string>
+    <string name="clear_confirm">确定要清空所有规则吗？</string>
+    <string name="confirm">确定</string>
+    <string name="cancel">取消</string>
+    <string name="back">返回</string>
+    <string name="app_description">轻量自动化点击引擎</string>
+    <string name="rule_management">规则管理</string>
+</resources>
