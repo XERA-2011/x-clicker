@@ -42,7 +42,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import dev.xera.xclicker.data.model.AppRuleSet
+import dev.xera.xclicker.data.gkd.AppRule
 import dev.xera.xclicker.service.XClickerService
 import dev.xera.xclicker.ui.UiState
 import dev.xera.xclicker.ui.component.ActionLogView
@@ -191,7 +191,8 @@ fun HomeScreen(
         }
 
         // ── 规则列表 ──
-        if (uiState.rules.isEmpty()) {
+        val apps = uiState.subscription?.apps ?: emptyList()
+        if (apps.isEmpty()) {
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -201,7 +202,7 @@ fun HomeScreen(
                     )
                 ) {
                     Text(
-                        text = "暂无规则\n请导入李跳跳格式的规则文件",
+                        text = "暂无规则\n请导入 GKD 格式的订阅文件",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -213,10 +214,10 @@ fun HomeScreen(
             }
         } else {
             itemsIndexed(
-                items = uiState.rules,
-                key = { _, item -> item.packageHash }
-            ) { _, ruleSet ->
-                RuleItem(appRuleSet = ruleSet)
+                items = apps,
+                key = { _, item -> item.id }
+            ) { _, appRule ->
+                RuleItem(appRule = appRule)
             }
         }
 
