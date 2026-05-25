@@ -59,9 +59,6 @@ class XClickerService : AccessibilityService() {
     @Volatile
     private var querying = false
 
-    @Volatile
-    private var needRequery = false
-
     // 记录每个 Group 的最后触发时间，用于 ActionCd (冷却)
     // Key: "$appId-$groupKey", Value: timestamp
     private val groupTriggerTimes = java.util.concurrent.ConcurrentHashMap<String, Long>()
@@ -114,13 +111,11 @@ class XClickerService : AccessibilityService() {
         // ── 应用和 Activity 切换检测 ──
         if (eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val className = event.className?.toString() ?: ""
-            var needWarmQueries = false
             
             if (packageName != currentAppId) {
                 currentAppId = packageName
                 appChangeTime = System.currentTimeMillis()
                 resetPackageRuleState(packageName)
-                needWarmQueries = true
                 Log.d(TAG, "应用切换: $packageName")
             }
             
@@ -137,18 +132,13 @@ class XClickerService : AccessibilityService() {
                     if (appActivityIds[packageName] != className) {
                         appActivityIds[packageName] = className
                         activityChangeTime = System.currentTimeMillis()
-                        needWarmQueries = true
                         Log.d(TAG, "Activity切换: $className")
                     }
                 }
             }
-            
-            if (needWarmQueries) {
-                scheduleWarmQueries(packageName)
-            }
         }
 
-        if (packageWhitelist.contains(packageName)) return
+        if (packageWhitelist.contains(packageName) || !hasRulesForPackage(packageName)) return
 
         // ── 智能节流 ──
         if (eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
@@ -181,35 +171,31 @@ class XClickerService : AccessibilityService() {
         lastTriggeredRuleKeys.clear()
     }
 
-    private fun scheduleWarmQueries(packageName: String) {
-        val delays = longArrayOf(250L, 600L, 1000L, 1500L, 2200L)
-        delays.forEach { delayMs ->
-            serviceScope.launch(queryDispatcher) {
-                delay(delayMs)
-                if (currentAppId == packageName && !isExecutingClick) {
-                    retryQuery(expectedPackageName = packageName)
-                }
-            }
-        }
+    private fun hasRulesForPackage(packageName: String): Boolean {
+        val sub = subscription ?: return false
+        val appRule = sub.apps.find { it.id == packageName }
+        val globalRule = sub.apps.find { it.id == "gkd.global" || it.id == "global" }
+        val hasActiveGlobalRules = globalRule?.groups?.any { group ->
+            !group.excludedAppIds.contains(packageName) &&
+            (group.matchAnyApp || group.targetAppIds.contains(packageName))
+        } ?: false
+        val hasAppRules = appRule?.groups?.isNotEmpty() ?: false
+        return hasActiveGlobalRules || hasAppRules
     }
 
     @Synchronized
     private fun startQueryJob(event: AccessibilityEvent?, packageName: String) {
         if (isExecutingClick) return
-        
-        if (querying) {
-            needRequery = true
+        if (querying) return
+
+        if (packageWhitelist.contains(packageName) || !hasRulesForPackage(packageName)) {
             return
         }
 
         querying = true
-        needRequery = false
 
         var eventSourceNode = try { event?.source } catch (_: Exception) { null }
         var activeWindowNode = try { rootInActiveWindow } catch (_: Exception) { null }
-        val windowRootsCount = try { windows?.size ?: 0 } catch (_: Exception) { 0 }
-
-
 
         // 核心修复：如果 activeWindowNode 属于 Launcher 或其他应用，或者获取为 null，说明目标应用还没完全渲染
         // 我们等待最多 200ms 让 activeWindowNode 更新，这与 GKD 的 timeout 机制一致
@@ -226,9 +212,6 @@ class XClickerService : AccessibilityService() {
                 }
                 retryCount++
             }
-            if (activePkg != null && activePkg != packageName && activePkg != "com.android.systemui") {
-                Log.d(TAG, "Window mismatch after wait: event=$packageName, active=$activePkg, falling back to windows")
-            }
         }
 
         val appRule = subscription?.apps?.find { it.id == packageName }
@@ -238,9 +221,6 @@ class XClickerService : AccessibilityService() {
         if (event != null) {
             ActionLog.log(packageName, "EVENT", "收到无障碍事件，开始扫描节点树")
         }
-        val windowPackages = try { windows?.mapNotNull { it.root?.packageName?.toString() } ?: emptyList() } catch (_: Exception) { emptyList() }
-
-
 
         serviceScope.launch(queryDispatcher) {
             try {
@@ -251,10 +231,6 @@ class XClickerService : AccessibilityService() {
                 querying = false
                 try { eventSourceNode?.recycle() } catch (_: Exception) {}
                 try { activeWindowNode?.recycle() } catch (_: Exception) {}
-                
-                if (needRequery && !isExecutingClick) {
-                    startQueryJob(null, packageName)
-                }
                 
                 checkFutureStartJob(packageName)
             }
@@ -562,13 +538,11 @@ class XClickerService : AccessibilityService() {
         
         val targetPackage = expectedPackageName ?: actualPackage ?: run {
             try { rootNode?.recycle() } catch (_: Exception) {}
-            checkFutureStartJob(expectedPackageName)
             return
         }
 
-        if (packageWhitelist.contains(targetPackage)) {
+        if (packageWhitelist.contains(targetPackage) || !hasRulesForPackage(targetPackage)) {
             try { rootNode?.recycle() } catch (_: Exception) {}
-            checkFutureStartJob(expectedPackageName)
             return
         }
         
@@ -577,11 +551,16 @@ class XClickerService : AccessibilityService() {
     }
 
     private fun checkFutureStartJob(expectedPackageName: String? = null) {
+        val packageName = expectedPackageName ?: currentAppId
+        if (packageName.isEmpty() || packageWhitelist.contains(packageName) || !hasRulesForPackage(packageName)) {
+            return
+        }
+
         val t = System.currentTimeMillis()
         if (t - appChangeTime < 3000L || t - lastTriggerTime < 3000L) {
             serviceScope.launch(queryDispatcher) {
                 delay(300)
-                retryQuery(expectedPackageName ?: currentAppId.takeIf { it.isNotEmpty() })
+                retryQuery(packageName)
             }
         }
     }
