@@ -130,3 +130,76 @@ val androidNodeTransform = Transform<AccessibilityNodeInfo>(
     },
     getParent = { node -> node.parent }
 )
+
+class NodeCache {
+    val childCache = mutableMapOf<Pair<AccessibilityNodeInfo, Int>, AccessibilityNodeInfo>()
+    val parentCache = mutableMapOf<AccessibilityNodeInfo, AccessibilityNodeInfo>()
+    val indexCache = mutableMapOf<AccessibilityNodeInfo, Int>()
+
+    fun getChild(node: AccessibilityNodeInfo, index: Int): AccessibilityNodeInfo? {
+        if (index !in 0 until node.childCount) return null
+        val key = Pair(node, index)
+        return childCache[key] ?: node.getChild(index)?.also { child ->
+            childCache[key] = child
+            parentCache[child] = node
+            indexCache[child] = index
+        }
+    }
+
+    fun getParent(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        return parentCache[node] ?: node.parent?.also { p ->
+            parentCache[node] = p
+        }
+    }
+    
+    fun getChildren(node: AccessibilityNodeInfo?): Sequence<AccessibilityNodeInfo> {
+        if (node == null) return emptySequence()
+        return sequence {
+            for (i in 0 until node.childCount) {
+                val child = getChild(node, i)
+                if (child != null) yield(child)
+            }
+        }
+    }
+
+    fun getIndex(node: AccessibilityNodeInfo): Int {
+        indexCache[node]?.let { return it }
+        val p = getParent(node) ?: return 0
+        getChildren(p).forEachIndexed { i, child ->
+            if (child == node) {
+                indexCache[node] = i
+                return i
+            }
+        }
+        return 0
+    }
+
+    fun getDepth(node: AccessibilityNodeInfo): Int {
+        var p: AccessibilityNodeInfo = node
+        var depth = 0
+        while (true) {
+            val p2 = getParent(p)
+            if (p2 != null) {
+                p = p2
+                depth++
+            } else {
+                break
+            }
+        }
+        return depth
+    }
+}
+
+fun createTransformWithFastQuery(nodeCache: NodeCache, getRoot: () -> AccessibilityNodeInfo?): Transform<AccessibilityNodeInfo> {
+    return Transform(
+        getAttr = androidNodeTransform.getAttr,
+        getInvoke = androidNodeTransform.getInvoke,
+        getName = androidNodeTransform.getName,
+        getChildren = { node ->
+            nodeCache.getChildren(node)
+        },
+        getParent = { node ->
+            nodeCache.getParent(node)
+        }
+    )
+}

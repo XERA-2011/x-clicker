@@ -7,7 +7,6 @@ import android.graphics.Rect
 import android.util.Log
 import android.view.ViewConfiguration
 import android.view.accessibility.AccessibilityNodeInfo
-import dev.xera.xclicker.data.model.PopupRule
 
 /**
  * 动作执行器 —— 对标 GKD 的 ActionPerformer 架构。
@@ -20,45 +19,9 @@ import dev.xera.xclicker.data.model.PopupRule
 object ActionExecutor {
 
     private const val TAG = "ActionExecutor"
-    private val COORDINATE_REGEX = Regex("""^-?\d+,-?\d+,-?\d+,-?\d+$""")
-
-    fun execute(
-        service: AccessibilityService,
-        node: AccessibilityNodeInfo?,
-        rule: PopupRule,
-        action: String
-    ) {
-        performAction(service, node, rule.id, action)
-    }
-
-    private fun performAction(
-        service: AccessibilityService,
-        node: AccessibilityNodeInfo?,
-        ruleId: String,
-        action: String
-    ) {
-        when {
-            action == "GLOBAL_ACTION_BACK" -> {
-                service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
-            }
-
-            COORDINATE_REGEX.matches(action) -> {
-                dispatchClickAtCoordinates(service, action)
-            }
-
-            else -> {
-                if (node != null) {
-                    // 对标 GKD 的 Click performer：先 ClickNode，失败则 ClickCenter
-                    performClick(service, node)
-                }
-            }
-        }
-    }
 
     /**
      * 对标 GKD 的 Click = ClickNode + ClickCenter 策略。
-     *
-     * @see GkdAction.Click (gkd/app/src/main/kotlin/li/songe/gkd/data/GkdAction.kt:91-104)
      */
     fun performClick(service: AccessibilityService, node: AccessibilityNodeInfo) {
         // Step 1: ClickNode — 如果节点声明了 isClickable，尝试 ACTION_CLICK

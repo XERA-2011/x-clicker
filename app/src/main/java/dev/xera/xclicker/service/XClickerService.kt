@@ -1,13 +1,15 @@
 package dev.xera.xclicker.service
 
 import android.accessibilityservice.AccessibilityService
-import android.graphics.Rect
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import dev.xera.xclicker.XClickerApp
 import dev.xera.xclicker.data.AppContainer
-import dev.xera.xclicker.data.model.AppRuleSet
+import dev.xera.xclicker.data.gkd.AppRule
+import dev.xera.xclicker.data.gkd.Rule
+import dev.xera.xclicker.data.gkd.RuleGroup
+import dev.xera.xclicker.data.gkd.Subscription
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -18,17 +20,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import li.songe.selector.Selector
 import java.util.concurrent.Executors
+import java.io.File
 
 /**
- * x-clicker 无障碍服务 —— 对标 GKD 的 A11yRuleEngine 架构重写。
+ * XClicker 无障碍服务 —— 纯正 GKD 精简版架构
  *
- * 核心改进：
- * 1. 智能节流：应用切换后 5 秒内不节流，成功触发后 3 秒内不节流
- * 2. 单线程查询：用专用 Dispatcher + @Synchronized 防止并发竞争
- * 3. 正确的节点获取：优先 event.source 快速匹配，失败回退 rootInActiveWindow 全树搜索
- * 4. 点击后 300ms 重查：处理连环弹窗
- * 5. GKD 式点击策略：先 ACTION_CLICK，失败则 dispatchGesture
+ * 完全摒弃旧有李跳跳混合逻辑，严格按照 GKD `App -> Group -> Rule` 进行解析和拦截。
  */
 class XClickerService : AccessibilityService() {
 
@@ -44,16 +43,17 @@ class XClickerService : AccessibilityService() {
 
     private lateinit var container: AppContainer
     private lateinit var serviceScope: CoroutineScope
-    private var cachedRules: List<AppRuleSet> = emptyList()
-    private var globalDelayMs: Long = 0L
+    private var subscription: Subscription? = null
 
-    // ── 智能节流相关（对标 GKD A11yRuleEngine.kt:113-139） ──
+    // ── 智能节流与状态追踪 ──
     private var lastContentEventTime = 0L
     private var appChangeTime = 0L          // 上次应用切换的时间
+    private var activityChangeTime = 0L     // 上次 Activity 切换的时间
     private var lastTriggerTime = 0L        // 上次成功触发点击的时间
-    private var lastTopPackage = ""         // 上次处于前台的包名
+    private var currentAppId = ""           // 当前处于前台的包名
+    private val appActivityIds = java.util.concurrent.ConcurrentHashMap<String, String>()
 
-    // ── 单线程查询（对标 GKD A11yRuleEngine.kt:50-52, 241-252） ──
+    // ── 单线程查询 ──
     private val queryDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
 
     @Volatile
@@ -62,30 +62,22 @@ class XClickerService : AccessibilityService() {
     @Volatile
     private var needRequery = false
 
-    // 记录每条规则的最后触发时间，用于冷却 (Action Cooldown)
+    // 记录每个 Group 的最后触发时间，用于 ActionCd (冷却)
+    // Key: "$appId-$groupKey", Value: timestamp
+    private val groupTriggerTimes = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private val ruleTriggerTimes = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    private val ruleTriggerCounts = java.util.concurrent.ConcurrentHashMap<String, Int>()
+    private val lastTriggeredRuleKeys = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
     @Volatile
     private var isExecutingClick = false
 
-    // ── 全局兜底关键字 ──
-    private val globalSkipKeywords = listOf(
-        "跳过", "跳過", "skip", "Skip", "SKIP",
-        "关闭广告", "关闭推荐", "关闭弹窗",
-        "跳过广告"
-    )
+    // 白名单过滤（禁止对这些应用进行扫描和点击）
     private val packageWhitelist = setOf(
         "com.android.systemui",
         "com.android.launcher",
         "com.miui.home",
-        "com.sec.android.app.launcher",
-        "com.huawei.android.launcher",
-        "dev.xera.xclicker",
-        "com.tencent.mm",
-        "com.tencent.mobileqq",
-        "com.sohu.inputmethod.sogou",
-        "com.baidu.input",
-        "com.iflytek.vflynote"
+        "dev.xera.xclicker"
     )
 
     override fun onServiceConnected() {
@@ -95,18 +87,11 @@ class XClickerService : AccessibilityService() {
         container = (application as XClickerApp).container
         serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
-        // Load initial rules and observe changes
         serviceScope.launch {
-            container.ruleManager.rulesFlow.collect { rules ->
-                cachedRules = rules
-                Log.d(TAG, "Rules updated: ${rules.size} app rule sets loaded")
-            }
-        }
-
-        // Observe global delay setting
-        serviceScope.launch {
-            container.settingsStore.globalDelay.collect { delay ->
-                globalDelayMs = delay
+            container.ruleManager.subscriptionFlow.collect { sub ->
+                subscription = sub
+                resetAllRuleState()
+                Log.d(TAG, "Subscription updated: ${sub?.apps?.size ?: 0} app rules loaded")
             }
         }
 
@@ -126,20 +111,46 @@ class XClickerService : AccessibilityService() {
 
         val packageName = event.packageName?.toString() ?: return
 
-        // 白名单过滤
-        if (packageWhitelist.contains(packageName)) return
-
-        // ── 应用切换检测 ──
-        if (packageName != lastTopPackage) {
-            if (eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-                lastTopPackage = packageName
+        // ── 应用和 Activity 切换检测 ──
+        if (eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            val className = event.className?.toString() ?: ""
+            var needWarmQueries = false
+            
+            if (packageName != currentAppId) {
+                currentAppId = packageName
                 appChangeTime = System.currentTimeMillis()
+                resetPackageRuleState(packageName)
+                needWarmQueries = true
                 Log.d(TAG, "应用切换: $packageName")
+            }
+            
+            // 验证 className 是否为真实的 Activity，防止被 Dialog/FrameLayout 覆盖
+            if (className.isNotEmpty()) {
+                val isActivity = try {
+                    packageManager.getActivityInfo(android.content.ComponentName(packageName, className), 0)
+                    true
+                } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
+                    false
+                }
+                
+                if (isActivity) {
+                    if (appActivityIds[packageName] != className) {
+                        appActivityIds[packageName] = className
+                        activityChangeTime = System.currentTimeMillis()
+                        needWarmQueries = true
+                        Log.d(TAG, "Activity切换: $className")
+                    }
+                }
+            }
+            
+            if (needWarmQueries) {
+                scheduleWarmQueries(packageName)
             }
         }
 
-        // ── 智能节流（对标 GKD A11yRuleEngine.kt:134-139） ──
-        // 核心思想：刚切换应用的前 5 秒 和 最近成功触发后的 3 秒内，绝不节流！
+        if (packageWhitelist.contains(packageName)) return
+
+        // ── 智能节流 ──
         if (eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
             val now = System.currentTimeMillis()
             val timeSinceAppChange = now - appChangeTime
@@ -147,266 +158,431 @@ class XClickerService : AccessibilityService() {
             val timeSinceLastContent = now - lastContentEventTime
 
             if (timeSinceLastContent < 100 && timeSinceAppChange > 5000 && timeSinceLastTrigger > 3000) {
-                // 应用已稳定运行超过 5 秒，且最近 3 秒没有触发过，节流 100ms 内的重复事件
                 return
             }
             lastContentEventTime = now
         }
 
-        // ── 启动查询任务 ──
         startQueryJob(event, packageName)
     }
 
-    /**
-     * 对标 GKD 的 startQueryJob —— @Synchronized 保证同一时间只有一个查询在执行。
-     *
-     * @see A11yRuleEngine.startQueryJob (gkd/app/src/main/kotlin/li/songe/gkd/a11y/A11yRuleEngine.kt:244-275)
-     */
+    private fun resetPackageRuleState(packageName: String) {
+        val prefix = "$packageName-"
+        groupTriggerTimes.keys.removeAll { it.startsWith(prefix) }
+        ruleTriggerTimes.keys.removeAll { it.startsWith(prefix) }
+        ruleTriggerCounts.keys.removeAll { it.startsWith(prefix) }
+        lastTriggeredRuleKeys.keys.removeAll { it.startsWith(prefix) }
+    }
+
+    private fun resetAllRuleState() {
+        groupTriggerTimes.clear()
+        ruleTriggerTimes.clear()
+        ruleTriggerCounts.clear()
+        lastTriggeredRuleKeys.clear()
+    }
+
+    private fun scheduleWarmQueries(packageName: String) {
+        val delays = longArrayOf(250L, 600L, 1000L, 1500L, 2200L)
+        delays.forEach { delayMs ->
+            serviceScope.launch(queryDispatcher) {
+                delay(delayMs)
+                if (currentAppId == packageName && !isExecutingClick) {
+                    retryQuery(expectedPackageName = packageName)
+                }
+            }
+        }
+    }
+
     @Synchronized
     private fun startQueryJob(event: AccessibilityEvent?, packageName: String) {
-        if (isExecutingClick) return // 如果正在等待点击，忽略新事件
+        if (isExecutingClick) return
         
         if (querying) {
-            needRequery = true // 标记需要重查，不要漏掉这个新事件（可能是布局刚完成）
+            needRequery = true
             return
         }
 
         querying = true
         needRequery = false
 
-        // 在主线程同步获取节点快照，避免协程延迟导致节点过期
-        val eventSourceNode = try { event?.source } catch (_: Exception) { null }
-        val activeWindowNode = try { rootInActiveWindow } catch (_: Exception) { null }
+        var eventSourceNode = try { event?.source } catch (_: Exception) { null }
+        var activeWindowNode = try { rootInActiveWindow } catch (_: Exception) { null }
+        val windowRootsCount = try { windows?.size ?: 0 } catch (_: Exception) { 0 }
 
-        if (eventSourceNode == null && activeWindowNode == null) {
-            querying = false
-            return
+
+
+        // 核心修复：如果 activeWindowNode 属于 Launcher 或其他应用，或者获取为 null，说明目标应用还没完全渲染
+        // 我们等待最多 200ms 让 activeWindowNode 更新，这与 GKD 的 timeout 机制一致
+        var activePkg = activeWindowNode?.packageName?.toString()
+        if (activePkg != packageName && activePkg != "com.android.systemui") {
+            var retryCount = 0
+            while (retryCount < 10) {
+                Thread.sleep(20)
+                try { activeWindowNode?.recycle() } catch (_: Exception) {}
+                activeWindowNode = try { rootInActiveWindow } catch (_: Exception) { null }
+                activePkg = activeWindowNode?.packageName?.toString()
+                if (activePkg == packageName) {
+                    break
+                }
+                retryCount++
+            }
+            if (activePkg != null && activePkg != packageName && activePkg != "com.android.systemui") {
+                Log.d(TAG, "Window mismatch after wait: event=$packageName, active=$activePkg, falling back to windows")
+            }
         }
 
-        val packageHash = packageName.hashCode().toString()
-        val ruleSet = cachedRules.find { it.packageHash == packageName || it.packageHash == packageHash }
+        val appRule = subscription?.apps?.find { it.id == packageName }
+        val globalRule = subscription?.apps?.find { it.id == "gkd.global" || it.id == "global" }
+        val rulesToEvaluate = listOfNotNull(globalRule, appRule)
 
-        ActionLog.log(packageName, "EVENT", "收到无障碍事件，开始扫描节点树")
+        if (event != null) {
+            ActionLog.log(packageName, "EVENT", "收到无障碍事件，开始扫描节点树")
+        }
+        val windowPackages = try { windows?.mapNotNull { it.root?.packageName?.toString() } ?: emptyList() } catch (_: Exception) { emptyList() }
+
+
 
         serviceScope.launch(queryDispatcher) {
             try {
-                queryAndAct(eventSourceNode, activeWindowNode, packageName, ruleSet)
+                queryAndAct(eventSourceNode, activeWindowNode, packageName, rulesToEvaluate)
             } catch (e: Exception) {
                 Log.e(TAG, "查询异常: $packageName", e)
-                ActionLog.log(packageName, "ERROR", "查询过程发生异常: ${e.message}", success = false)
             } finally {
                 querying = false
-                // 回收节点
                 try { eventSourceNode?.recycle() } catch (_: Exception) {}
                 try { activeWindowNode?.recycle() } catch (_: Exception) {}
                 
-                // 如果在查询期间来了新事件，马上重查一次最新的节点树
                 if (needRequery && !isExecutingClick) {
                     startQueryJob(null, packageName)
                 }
+                
+                checkFutureStartJob(packageName)
             }
         }
     }
 
-    /**
-     * 核心查询与执行逻辑 —— 对标 GKD 的 queryAction。
-     *
-     * 节点获取策略（对标 GKD A11yRuleEngine.kt:358-398）：
-     * 1. 优先在 event.source 上搜索（速度快，直接命中事件发生的子树）
-     * 2. 如果 event.source 没找到，回退到 rootInActiveWindow 全树搜索
-     */
     private suspend fun queryAndAct(
         eventSourceNode: AccessibilityNodeInfo?,
         activeWindowNode: AccessibilityNodeInfo?,
         packageName: String,
-        ruleSet: AppRuleSet?
+        appRules: List<AppRule>
     ) {
-        // ── 尝试专属规则匹配 ──
-        if (ruleSet != null && ruleSet.lttService) {
-            for (popupRule in ruleSet.popupRules) {
-                // Step 1: 先在 event.source 子树上找
-                var targetNode = if (eventSourceNode != null) {
-                    NodeMatcher.findTarget(eventSourceNode, popupRule)
-                } else null
+        if (appRules.isEmpty() || appRules.all { it.groups.isEmpty() }) {
+            ActionLog.log(packageName, "EVENT", "未找到该应用及全局规则配置，跳过匹配", success = false)
+            return
+        }
 
-                // Step 2: 没找到则在 rootInActiveWindow 全树上找
-                if (targetNode == null && activeWindowNode != null) {
-                    targetNode = NodeMatcher.findTarget(activeWindowNode, popupRule)
+        val totalGroups = appRules.sumOf { it.groups.size }
+        ActionLog.log(packageName, "EVENT", "开始 GKD 匹配: 检查 $totalGroups 个规则组")
+
+        val now = System.currentTimeMillis()
+        val currentActivityId = appActivityIds[packageName].orEmpty()
+        var matchedTarget: AccessibilityNodeInfo? = null
+        var matchedGroup: RuleGroup? = null
+        var matchedRule: Rule? = null
+        
+        val nodeCache = dev.xera.xclicker.service.selector.NodeCache()
+        val androidNodeTransform = dev.xera.xclicker.service.selector.createTransformWithFastQuery(nodeCache) {
+            activeWindowNode
+        }
+        val allQueryNodes = collectQueryNodes(eventSourceNode, activeWindowNode, packageName)
+
+        fun querySelector(node: AccessibilityNodeInfo, selector: Selector, option: li.songe.selector.MatchOption): AccessibilityNodeInfo? {
+            try {
+                if (selector.isMatchRoot) {
+                    val result = selector.match(activeWindowNode ?: return null, androidNodeTransform, option)
+                    Log.d(TAG, "  querySelector(root): selector=${selector.toString()}, result=${result != null}")
+                    return result
                 }
-
-                if (targetNode != null) {
-                    // Check Cooldown (3000ms by default)
-                    val lastTrigger = ruleTriggerTimes[popupRule.id] ?: 0L
-                    if (System.currentTimeMillis() - lastTrigger < 3000) {
-                        try { targetNode.recycle() } catch (_: Exception) {}
-                        continue
-                    }
-
-                    // 匹配到了！执行点击
-                    isExecutingClick = true
-                    val totalDelay = popupRule.delay + globalDelayMs
-                    
-                    val b = android.graphics.Rect()
-                    targetNode.getBoundsInScreen(b)
-                    
-                    ActionLog.log(packageName, "MATCH", "专属规则命中: ${targetNode.text ?: targetNode.contentDescription} [${b.width()}x${b.height()}] (即将点击)")
-                    if (totalDelay > 0) delay(totalDelay)
-
-                    Log.i(TAG, "规则命中: rule=${popupRule.id}, text=${targetNode.text ?: targetNode.contentDescription}, pkg=$packageName")
-                    ActionExecutor.execute(
-                        service = this@XClickerService,
-                        node = targetNode,
-                        rule = popupRule,
-                        action = popupRule.action
-                    )
-                    ActionLog.log(packageName, "ACTION", "已执行专属规则动作")
-                    
-                    // 记录规则的触发时间
-                    ruleTriggerTimes[popupRule.id] = System.currentTimeMillis()
-
-                    onActionTriggered()
-                    isExecutingClick = false
-                    try { targetNode.recycle() } catch (_: Exception) {}
-                    return
+                selector.match(node, androidNodeTransform, option)?.let {
+                    Log.d(TAG, "  querySelector(direct): selector=${selector.toString()}, matched=${it.className}")
+                    return it
                 }
+                val result = androidNodeTransform.querySelector(node, selector, option)
+                Log.d(TAG, "  querySelector(traverse): selector=${selector.toString()}, result=${result != null}, fastQuery=${option.fastQuery}")
+                return result
+            } catch (e: Exception) {
+                Log.e(TAG, "Selector query failed: ${e.message}", e)
+                return null
             }
         }
 
-        // ── 全局兜底匹配 ──
-        val lastGlobalTrigger = ruleTriggerTimes["GLOBAL_FALLBACK"] ?: 0L
-        if (System.currentTimeMillis() - lastGlobalTrigger > 1000) {
-            // 按照范围从小到大搜索：先事件子树，再当前活动窗口全树，最后搜索所有窗口（覆盖悬浮窗/Dialog）
-            var fallbackNode = findFallbackNode(eventSourceNode)
-                ?: findFallbackNode(activeWindowNode)
+        fun querySelector(packageName: String, node: AccessibilityNodeInfo, selector: Selector, option: li.songe.selector.MatchOption): AccessibilityNodeInfo? {
+            try {
+                if (selector.isMatchRoot) {
+                    val result = selector.match(activeWindowNode ?: return null, androidNodeTransform, option)
+                    return result
+                }
+                selector.match(node, androidNodeTransform, option)?.let {
+                    return it
+                }
+                val result = androidNodeTransform.querySelector(node, selector, option)
+                return result
+            } catch (e: Exception) {
+                return null
+            }
+        }
 
-        if (fallbackNode == null) {
-            val allWindows = try { windows } catch (_: Exception) { null }
-            if (allWindows != null) {
-                for (window in allWindows) {
-                    val root = try { window.root } catch (_: Exception) { null }
-                    if (root != null && root != activeWindowNode) {
-                        fallbackNode = findFallbackNode(root)
-                        if (fallbackNode != null) {
-                            try { root.recycle() } catch (_: Exception) {}
+        fun evaluateRule(packageName: String, rule: Rule, queryNode: AccessibilityNodeInfo, option: li.songe.selector.MatchOption): AccessibilityNodeInfo? {
+            var finalTarget: AccessibilityNodeInfo? = null
+            
+            if (rule.anyMatches.isNotEmpty()) {
+                var anyMatched = false
+                for (matchStr in rule.anyMatches) {
+                    val selector = try { Selector.parse(matchStr) } catch(e: Exception) { 
+                        continue 
+                    }
+                    val node = querySelector(packageName, queryNode, selector, option)
+                    if (node != null) {
+                        anyMatched = true
+                        if (finalTarget == null) {
+                            finalTarget = node
+                        }
+                    } else {
+                    }
+                }
+                if (!anyMatched) return null
+            }
+            
+            for (matchStr in rule.matches) {
+                val selector = try { Selector.parse(matchStr) } catch(e: Exception) { 
+                    continue 
+                }
+                val node = querySelector(packageName, queryNode, selector, option)
+                if (node == null) {
+                    return null
+                }
+                finalTarget = node
+            }
+            
+            for (matchStr in rule.excludeMatches) {
+                val selector = try { Selector.parse(matchStr) } catch(e: Exception) { continue }
+                if (querySelector(packageName, queryNode, selector, option) != null) {
+                    return null
+                }
+            }
+
+            if (rule.excludeAllMatches.isNotEmpty()) {
+                val hasExcludedNode = rule.excludeAllMatches.any { matchStr ->
+                    val selector = try { Selector.parse(matchStr) } catch(e: Exception) { return@any false }
+                    querySelector(packageName, queryNode, selector, option) != null
+                }
+                if (hasExcludedNode) {
+                    return null
+                }
+            }
+            
+            return finalTarget
+        }
+
+        for (appRule in appRules) {
+            for (group in appRule.groups) {
+                if (appRule.id == "gkd.global" || appRule.id == "global") {
+                    val groupMatchesApp = !group.excludedAppIds.contains(packageName) &&
+                        (group.matchAnyApp || group.targetAppIds.contains(packageName))
+                    if (!groupMatchesApp) {
+                        continue
+                    }
+                }
+
+                val groupCdKey = "$packageName-${appRule.id}-${group.key}"
+                val lastGroupTrigger = groupTriggerTimes[groupCdKey] ?: 0L
+                if (now - lastGroupTrigger < group.actionCd) {
+                    continue
+                }
+                val groupMaximum = group.actionMaximum
+                if (groupMaximum != null) {
+                    val count = ruleTriggerCounts[groupCdKey] ?: 0
+                    if (count >= groupMaximum) {
+                        continue
+                    }
+                }
+
+                if (group.activityIds.isNotEmpty()) {
+                    val groupActivityMatched = group.activityIds.any {
+                        val target = if (it.startsWith(".")) packageName + it else it
+                        currentActivityId == target || currentActivityId.startsWith(target)
+                    }
+                    if (!groupActivityMatched) {
+                        continue
+                    }
+                }
+                if (group.excludeActivityIds.isNotEmpty()) {
+                    val groupActivityExcluded = group.excludeActivityIds.any {
+                        val target = if (it.startsWith(".")) packageName + it else it
+                        currentActivityId == target || currentActivityId.startsWith(target)
+                    }
+                    if (groupActivityExcluded) {
+                        continue
+                    }
+                }
+
+                for (rule in group.rules) {
+                    if (rule.activityIds.isNotEmpty()) {
+                        val activityMatched = rule.activityIds.any {
+                            val target = if (it.startsWith(".")) packageName + it else it
+                            currentActivityId == target || currentActivityId.startsWith(target)
+                        }
+                        if (!activityMatched) {
+                            continue
+                        }
+                    }
+                    if (rule.excludeActivityIds.isNotEmpty()) {
+                        val activityExcluded = rule.excludeActivityIds.any {
+                            val target = if (it.startsWith(".")) packageName + it else it
+                            currentActivityId == target || currentActivityId.startsWith(target)
+                        }
+                        if (activityExcluded) {
+                            continue
+                        }
+                    }
+
+                    if (rule.preKeys.isNotEmpty()) {
+                        val lastRuleKey = lastTriggeredRuleKeys[groupCdKey]
+                        if (lastRuleKey == null || !rule.preKeys.contains(lastRuleKey)) {
+                            continue
+                        }
+                    }
+
+                    val ruleKey = "$groupCdKey-${rule.key ?: group.rules.indexOf(rule)}"
+                    val ruleCd = rule.actionCd ?: group.actionCd
+                    val lastRuleTrigger = ruleTriggerTimes[ruleKey] ?: 0L
+                    if (now - lastRuleTrigger < ruleCd) {
+                        continue
+                    }
+                    val ruleMaximum = rule.actionMaximum
+                    if (ruleMaximum != null) {
+                        val count = ruleTriggerCounts[ruleKey] ?: 0
+                        if (count >= ruleMaximum) {
+                            continue
+                        }
+                    }
+
+                    val isFastQuery = rule.fastQuery || group.fastQuery
+                    val option = li.songe.selector.MatchOption(fastQuery = isFastQuery)
+
+                    val queryNodes = if (group.matchRoot || rule.matchRoot) {
+                        listOfNotNull(activeWindowNode)
+                    } else {
+                        allQueryNodes
+                    }
+                    
+                    if (queryNodes.isEmpty()) {
+                        continue
+                    }
+                    
+                    for (queryNode in queryNodes) {
+                        matchedTarget = evaluateRule(packageName, rule, queryNode, option)
+                        if (matchedTarget != null) {
+                            matchedGroup = group
+                            matchedRule = rule
                             break
                         }
                     }
-                    try { root?.recycle() } catch (_: Exception) {}
+                    if (matchedTarget != null) break
                 }
+                if (matchedTarget != null) break
+            }
+            if (matchedTarget != null) break
+        }
+
+        val targetGroup = matchedGroup
+        val targetRule = matchedRule
+        if (matchedTarget != null && targetGroup != null && targetRule != null) {
+            val safeTarget = AccessibilityNodeInfo.obtain(matchedTarget)
+            isExecutingClick = true
+            try {
+                ActionLog.log(packageName, "MATCH", "GKD 原生规则命中: [Group=${targetGroup.name}] [${safeTarget?.className}] (即将点击)")
+
+                val delayMs = targetRule.actionDelay ?: targetGroup.actionDelay
+                if (delayMs > 0L) {
+                    delay(delayMs)
+                }
+                ActionExecutor.performClick(this@XClickerService, safeTarget)
+                ActionLog.log(packageName, "ACTION", "执行点击完毕")
+
+                val appId = appRules.firstOrNull { it.groups.contains(targetGroup) }?.id ?: packageName
+                val groupCdKey = "$packageName-$appId-${targetGroup.key}"
+                val ruleKey = "$groupCdKey-${targetRule.key ?: targetGroup.rules.indexOf(targetRule)}"
+                val triggerTime = System.currentTimeMillis()
+                groupTriggerTimes[groupCdKey] = triggerTime
+                ruleTriggerTimes[ruleKey] = triggerTime
+                ruleTriggerCounts[groupCdKey] = (ruleTriggerCounts[groupCdKey] ?: 0) + 1
+                ruleTriggerCounts[ruleKey] = (ruleTriggerCounts[ruleKey] ?: 0) + 1
+                targetRule.key?.let { lastTriggeredRuleKeys[groupCdKey] = it }
+
+                onActionTriggered()
+            } finally {
+                isExecutingClick = false
+                try { safeTarget.recycle() } catch (_: Exception) {}
             }
         }
-
-        if (fallbackNode != null) {
-            isExecutingClick = true
-            
-            val b = android.graphics.Rect()
-            fallbackNode.getBoundsInScreen(b)
-            
-            ActionLog.log(packageName, "MATCH", "全局兜底命中: ${fallbackNode.text ?: fallbackNode.contentDescription} [${b.width()}x${b.height()}] (即将点击)")
-            if (globalDelayMs > 0) delay(globalDelayMs)
-
-            Log.i(TAG, "全局兜底命中: text=${fallbackNode.text ?: fallbackNode.contentDescription}, pkg=$packageName")
-            ActionExecutor.performClick(this@XClickerService, fallbackNode)
-            ActionLog.log(packageName, "ACTION", "已执行全局物理兜底点击")
-            
-            // 全局兜底也加上冷却，避免疯狂点击同一个位置
-            ruleTriggerTimes["GLOBAL_FALLBACK"] = System.currentTimeMillis()
-
-            onActionTriggered()
-            isExecutingClick = false
-            try { fallbackNode.recycle() } catch (_: Exception) {}
-        }
+        if (matchedTarget == null) {
+            val activityInfo = appActivityIds[packageName].orEmpty().ifEmpty { "未知Activity" }
+            ActionLog.log(packageName, "EVENT", "匹配结束，未发现跳过目标 (Activity=$activityInfo)", success = false)
         }
     }
 
-    /**
-     * 成功执行动作后的回调 —— 对标 GKD 的 rule.trigger() + 300ms 重查。
-     *
-     * @see A11yRuleEngine.kt:420-424
-     */
+    private fun collectQueryNodes(
+        eventSourceNode: AccessibilityNodeInfo?,
+        activeWindowNode: AccessibilityNodeInfo?,
+        packageName: String
+    ): List<AccessibilityNodeInfo> {
+        val nodes = mutableListOf<AccessibilityNodeInfo>()
+        eventSourceNode?.let { nodes.add(it) }
+        activeWindowNode?.let { nodes.add(it) }
+        val windowRoots = try {
+            windows?.mapNotNull { window ->
+                try { window.root } catch (_: Exception) { null }
+            }
+        } catch (_: Exception) {
+            null
+        }
+        windowRoots?.forEach { root ->
+            val rootPackage = root.packageName?.toString()
+            if (rootPackage == packageName && nodes.none { it == root }) {
+                nodes.add(root)
+            }
+        }
+        return nodes
+    }
+
     private fun onActionTriggered() {
         lastTriggerTime = System.currentTimeMillis()
-
-        // 对标 GKD：成功点击后 300ms 重查，处理连环弹窗
+        val packageName = currentAppId
         serviceScope.launch(queryDispatcher) {
             delay(300)
-            retryQuery()
+            retryQuery(expectedPackageName = packageName)
         }
     }
 
-    /**
-     * 点击后的重试查询 —— 重新获取当前屏幕节点进行一次完整扫描。
-     */
-    private fun retryQuery() {
-        val rootNode = try { rootInActiveWindow } catch (_: Exception) { null } ?: return
-        val packageName = rootNode.packageName?.toString() ?: run {
-            try { rootNode.recycle() } catch (_: Exception) {}
+    private fun retryQuery(expectedPackageName: String? = null) {
+        val rootNode = try { rootInActiveWindow } catch (_: Exception) { null }
+        val actualPackage = rootNode?.packageName?.toString()
+        
+        val targetPackage = expectedPackageName ?: actualPackage ?: run {
+            try { rootNode?.recycle() } catch (_: Exception) {}
+            checkFutureStartJob(expectedPackageName)
             return
         }
 
-        if (packageWhitelist.contains(packageName)) {
-            try { rootNode.recycle() } catch (_: Exception) {}
+        if (packageWhitelist.contains(targetPackage)) {
+            try { rootNode?.recycle() } catch (_: Exception) {}
+            checkFutureStartJob(expectedPackageName)
             return
         }
-
-        val packageHash = packageName.hashCode().toString()
-        val ruleSet = cachedRules.find { it.packageHash == packageName || it.packageHash == packageHash }
-
-        serviceScope.launch(queryDispatcher) {
-            try {
-                queryAndAct(null, rootNode, packageName, ruleSet)
-            } catch (e: Exception) {
-                Log.e(TAG, "重查异常: $packageName", e)
-            } finally {
-                try { rootNode.recycle() } catch (_: Exception) {}
-            }
-        }
+        
+        try { rootNode?.recycle() } catch (_: Exception) {}
+        startQueryJob(null, targetPackage)
     }
 
-    /**
-     * 全局关键字兜底搜索 —— 在节点树中查找包含跳过关键字的节点。
-     * 只过滤 bounds 为空的幽灵节点，不检查 isVisibleToUser。
-     */
-    private fun findFallbackNode(node: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
-        if (node == null) return null
-        val candidates = mutableListOf<AccessibilityNodeInfo>()
-        collectFallbackCandidates(node, candidates)
-        
-        // 选择面积最小的节点（避免选中整个全屏的广告容器）
-        val best = candidates.minByOrNull { n ->
-            val bounds = Rect()
-            n.getBoundsInScreen(bounds)
-            bounds.width().toLong() * bounds.height().toLong()
-        }
-        
-        // 回收其他候选节点避免内存泄漏
-        for (c in candidates) {
-            if (c != best) {
-                try { c.recycle() } catch (_: Exception) {}
+    private fun checkFutureStartJob(expectedPackageName: String? = null) {
+        val t = System.currentTimeMillis()
+        if (t - appChangeTime < 3000L || t - lastTriggerTime < 3000L) {
+            serviceScope.launch(queryDispatcher) {
+                delay(300)
+                retryQuery(expectedPackageName ?: currentAppId.takeIf { it.isNotEmpty() })
             }
-        }
-        
-        return best
-    }
-
-    private fun collectFallbackCandidates(node: AccessibilityNodeInfo?, candidates: MutableList<AccessibilityNodeInfo>) {
-        if (node == null) return
-
-        val text = node.text?.toString() ?: ""
-        val desc = node.contentDescription?.toString() ?: ""
-
-        if (globalSkipKeywords.any { text.contains(it) || desc.contains(it) }) {
-            val bounds = Rect()
-            node.getBoundsInScreen(bounds)
-            if (!bounds.isEmpty) {
-                candidates.add(AccessibilityNodeInfo.obtain(node))
-            } else {
-                ActionLog.log(node.packageName?.toString() ?: "", "MATCH", "找到跳过关键字但被过滤 (尺寸为空)", success = false)
-            }
-        }
-
-        for (i in 0 until node.childCount) {
-            collectFallbackCandidates(node.getChild(i), candidates)
         }
     }
 
@@ -421,4 +597,5 @@ class XClickerService : AccessibilityService() {
         instance = null
         _isRunning.value = false
     }
+    
 }
