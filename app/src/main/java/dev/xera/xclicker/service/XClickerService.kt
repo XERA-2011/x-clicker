@@ -108,6 +108,13 @@ class XClickerService : AccessibilityService() {
 
         val packageName = event.packageName?.toString() ?: return
 
+        if (currentAppId.isEmpty()) {
+            currentAppId = packageName
+            appChangeTime = System.currentTimeMillis()
+            resetPackageRuleState(packageName)
+            Log.d(TAG, "初始化前台应用: $packageName")
+        }
+
         // ── 应用和 Activity 切换检测 ──
         if (eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val className = event.className?.toString() ?: ""
@@ -137,6 +144,8 @@ class XClickerService : AccessibilityService() {
                 }
             }
         }
+
+        if (packageName != currentAppId) return
 
         if (packageWhitelist.contains(packageName) || !hasRulesForPackage(packageName)) return
 
