@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.xera.xclicker.data.AppContainer
 import dev.xera.xclicker.data.gkd.Subscription
-import dev.xera.xclicker.service.XClickerService
+import com.google.android.accessibility.selecttospeak.SelectToSpeakService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -51,7 +51,7 @@ class MainViewModel(
     }
 
     val uiState: StateFlow<UiState> = combine(
-        XClickerService.isRunning,
+        SelectToSpeakService.isRunning,
         container.ruleManager.subscriptionFlow,
         container.settingsStore.globalDelay,
         _currentScreen,
