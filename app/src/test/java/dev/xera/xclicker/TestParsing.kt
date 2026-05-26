@@ -50,5 +50,64 @@ class TestParsing {
         org.junit.Assert.assertEquals("clickCenter", rule.action)
         org.junit.Assert.assertEquals(5, rule.order)
     }
+
+    @Test
+    fun testRuleManagerParseNewFields() {
+        val json = """
+        {
+          "id": 1,
+          "name": "Test Subscription",
+          "apps": [
+            {
+              "id": "com.test.app",
+              "groups": [
+                {
+                  "key": 1,
+                  "name": "Group 1",
+                  "rules": [
+                    {
+                      "key": 10,
+                      "matches": ["Button"],
+                      "matchDelay": 500,
+                      "matchTime": 10000,
+                      "forcedTime": 5000,
+                      "resetMatch": "activity",
+                      "action": "clickCenter",
+                      "order": 5
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+        """.trimIndent()
+
+        val dummyContext = object : android.content.ContextWrapper(null) {
+            override fun getFilesDir(): File {
+                val tempDir = File("build/tmp/test-rules")
+                tempDir.mkdirs()
+                return tempDir
+            }
+        }
+        val ruleManager = dev.xera.xclicker.data.RuleManager(dummyContext)
+
+        
+        val method = dev.xera.xclicker.data.RuleManager::class.java.getDeclaredMethod("parseGkdJson", String::class.java)
+        method.isAccessible = true
+        val subscription = method.invoke(ruleManager, json) as dev.xera.xclicker.data.gkd.Subscription?
+        
+        org.junit.Assert.assertNotNull(subscription)
+        val rule = subscription!!.apps[0].groups[0].rules[0]
+        println("PARSED RULE: $rule")
+        org.junit.Assert.assertEquals(500L, rule.matchDelay)
+        org.junit.Assert.assertEquals(10000L, rule.matchTime)
+        org.junit.Assert.assertEquals(5000L, rule.forcedTime)
+        org.junit.Assert.assertEquals("activity", rule.resetMatch)
+        org.junit.Assert.assertEquals("clickCenter", rule.action)
+        org.junit.Assert.assertEquals(5, rule.order)
+    }
 }
+
+
 

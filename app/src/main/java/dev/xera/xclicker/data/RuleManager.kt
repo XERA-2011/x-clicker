@@ -206,6 +206,13 @@ class RuleManager(private val context: Context) {
         val activityIds = extractStringList(node, "activityIds")
         val excludeActivityIds = extractStringList(node, "excludeActivityIds")
 
+        val matchDelay = readLong(node, "matchDelay")
+        val matchTime = readLong(node, "matchTime")
+        val forcedTime = readLong(node, "forcedTime")
+        val resetMatch = if (node.has("resetMatch")) node.path("resetMatch").asText(null) else null
+        val action = if (node.has("action")) node.path("action").asText(null) else null
+        val order = readInt(node, "order")
+
         return Rule(
             key = key,
             matches = extractMatches(node, "matches"),
@@ -219,8 +226,15 @@ class RuleManager(private val context: Context) {
             actionDelay = readLong(node, "actionDelay") ?: readLong(node, "delay"),
             actionMaximum = readInt(node, "actionMaximum"),
             matchRoot = readBoolean(node, "matchRoot"),
-            fastQuery = fastQuery
+            fastQuery = fastQuery,
+            matchDelay = matchDelay,
+            matchTime = matchTime,
+            forcedTime = forcedTime,
+            resetMatch = resetMatch,
+            action = action,
+            order = order
         )
+
     }
 
     private fun extractMatches(node: JsonNode, fieldName: String): List<String> {
