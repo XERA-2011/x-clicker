@@ -96,6 +96,13 @@ class XClickerService : AccessibilityService() {
         _isRunning.value = true
     }
 
+    private fun getTrueActivePackage(): String? {
+        val root = try { rootInActiveWindow } catch (_: Exception) { null }
+        val pkg = root?.packageName?.toString()
+        try { root?.recycle() } catch (_: Exception) {}
+        return pkg
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
 
@@ -109,36 +116,39 @@ class XClickerService : AccessibilityService() {
         val packageName = event.packageName?.toString() ?: return
 
         if (currentAppId.isEmpty()) {
-            currentAppId = packageName
+            val truePkg = getTrueActivePackage() ?: packageName
+            currentAppId = truePkg
             appChangeTime = System.currentTimeMillis()
-            resetPackageRuleState(packageName)
-            Log.d(TAG, "初始化前台应用: $packageName")
+            resetPackageRuleState(truePkg)
+            Log.d(TAG, "初始化前台应用: $truePkg")
         }
 
         // ── 应用和 Activity 切换检测 ──
         if (eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val className = event.className?.toString() ?: ""
+            val truePkg = getTrueActivePackage() ?: packageName
             
-            if (packageName != currentAppId) {
-                currentAppId = packageName
+            if (truePkg != currentAppId) {
+                currentAppId = truePkg
                 appChangeTime = System.currentTimeMillis()
-                resetPackageRuleState(packageName)
-                Log.d(TAG, "应用切换: $packageName")
+                resetPackageRuleState(truePkg)
+                Log.d(TAG, "应用切换: $truePkg")
             }
             
             // 验证 className 是否为真实的 Activity，防止被 Dialog/FrameLayout 覆盖
             if (className.isNotEmpty()) {
                 val isActivity = try {
-                    packageManager.getActivityInfo(android.content.ComponentName(packageName, className), 0)
+                    packageManager.getActivityInfo(android.content.ComponentName(truePkg, className), 0)
                     true
                 } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
                     false
                 }
                 
                 if (isActivity) {
-                    if (appActivityIds[packageName] != className) {
-                        appActivityIds[packageName] = className
+                    if (appActivityIds[truePkg] != className) {
+                        appActivityIds[truePkg] = className
                         activityChangeTime = System.currentTimeMillis()
+                        resetActivityRuleState(truePkg)
                         Log.d(TAG, "Activity切换: $className")
                     }
                 }
@@ -173,6 +183,21 @@ class XClickerService : AccessibilityService() {
         lastTriggeredRuleKeys.keys.removeAll { it.startsWith(prefix) }
     }
 
+    private fun resetActivityRuleState(packageName: String) {
+        val sub = subscription ?: return
+        val appRule = sub.apps.find { it.id == packageName } ?: return
+        for (group in appRule.groups) {
+            val groupCdKey = "$packageName-${appRule.id}-${group.key}"
+            for (rule in group.rules) {
+                if (rule.resetMatch == "activity") {
+                    val ruleKey = "$groupCdKey-${rule.key ?: group.rules.indexOf(rule)}"
+                    ruleTriggerTimes.remove(ruleKey)
+                    ruleTriggerCounts.remove(ruleKey)
+                }
+            }
+        }
+    }
+
     private fun resetAllRuleState() {
         groupTriggerTimes.clear()
         ruleTriggerTimes.clear()
@@ -183,13 +208,9 @@ class XClickerService : AccessibilityService() {
     private fun hasRulesForPackage(packageName: String): Boolean {
         val sub = subscription ?: return false
         val appRule = sub.apps.find { it.id == packageName }
-        val globalRule = sub.apps.find { it.id == "gkd.global" || it.id == "global" }
-        val hasActiveGlobalRules = globalRule?.groups?.any { group ->
-            !group.excludedAppIds.contains(packageName) &&
-            (group.matchAnyApp || group.targetAppIds.contains(packageName))
-        } ?: false
-        val hasAppRules = appRule?.groups?.isNotEmpty() ?: false
-        return hasActiveGlobalRules || hasAppRules
+        // 核心优化（“黑名单模式”）：只有该应用在订阅的 App 列表中，且拥有专属规则组时，才触发扫描。
+        // 这能完美过滤掉桌面、系统搜索栏（quicksearchbox）等不带广告或不需要跳过的系统应用。
+        return appRule != null && appRule.groups.isNotEmpty()
     }
 
     @Synchronized
@@ -203,26 +224,6 @@ class XClickerService : AccessibilityService() {
 
         querying = true
 
-        var eventSourceNode = try { event?.source } catch (_: Exception) { null }
-        var activeWindowNode = try { rootInActiveWindow } catch (_: Exception) { null }
-
-        // 核心修复：如果 activeWindowNode 属于 Launcher 或其他应用，或者获取为 null，说明目标应用还没完全渲染
-        // 我们等待最多 200ms 让 activeWindowNode 更新，这与 GKD 的 timeout 机制一致
-        var activePkg = activeWindowNode?.packageName?.toString()
-        if (activePkg != packageName && activePkg != "com.android.systemui") {
-            var retryCount = 0
-            while (retryCount < 10) {
-                Thread.sleep(20)
-                try { activeWindowNode?.recycle() } catch (_: Exception) {}
-                activeWindowNode = try { rootInActiveWindow } catch (_: Exception) { null }
-                activePkg = activeWindowNode?.packageName?.toString()
-                if (activePkg == packageName) {
-                    break
-                }
-                retryCount++
-            }
-        }
-
         val appRule = subscription?.apps?.find { it.id == packageName }
         val globalRule = subscription?.apps?.find { it.id == "gkd.global" || it.id == "global" }
         val rulesToEvaluate = listOfNotNull(globalRule, appRule)
@@ -232,13 +233,29 @@ class XClickerService : AccessibilityService() {
         }
 
         serviceScope.launch(queryDispatcher) {
+            var activeWindowNode: AccessibilityNodeInfo? = null
             try {
-                queryAndAct(eventSourceNode, activeWindowNode, packageName, rulesToEvaluate)
+                activeWindowNode = try { rootInActiveWindow } catch (_: Exception) { null }
+                var activePkg = activeWindowNode?.packageName?.toString()
+                if (activePkg != packageName && activePkg != "com.android.systemui") {
+                    var retryCount = 0
+                    while (retryCount < 10) {
+                        delay(20)
+                        try { activeWindowNode?.recycle() } catch (_: Exception) {}
+                        activeWindowNode = try { rootInActiveWindow } catch (_: Exception) { null }
+                        activePkg = activeWindowNode?.packageName?.toString()
+                        if (activePkg == packageName) {
+                            break
+                        }
+                        retryCount++
+                    }
+                }
+
+                queryAndAct(activeWindowNode, packageName, rulesToEvaluate)
             } catch (e: Exception) {
                 Log.e(TAG, "查询异常: $packageName", e)
             } finally {
                 querying = false
-                try { eventSourceNode?.recycle() } catch (_: Exception) {}
                 try { activeWindowNode?.recycle() } catch (_: Exception) {}
                 
                 checkFutureStartJob(packageName)
@@ -247,7 +264,6 @@ class XClickerService : AccessibilityService() {
     }
 
     private suspend fun queryAndAct(
-        eventSourceNode: AccessibilityNodeInfo?,
         activeWindowNode: AccessibilityNodeInfo?,
         packageName: String,
         appRules: List<AppRule>
@@ -270,7 +286,7 @@ class XClickerService : AccessibilityService() {
         val androidNodeTransform = dev.xera.xclicker.service.selector.createTransformWithFastQuery(nodeCache) {
             activeWindowNode
         }
-        val allQueryNodes = collectQueryNodes(eventSourceNode, activeWindowNode, packageName)
+        val allQueryNodes = collectQueryNodes(activeWindowNode, packageName)
 
         fun querySelector(node: AccessibilityNodeInfo, selector: Selector, option: li.songe.selector.MatchOption): AccessibilityNodeInfo? {
             try {
@@ -509,12 +525,10 @@ class XClickerService : AccessibilityService() {
     }
 
     private fun collectQueryNodes(
-        eventSourceNode: AccessibilityNodeInfo?,
         activeWindowNode: AccessibilityNodeInfo?,
         packageName: String
     ): List<AccessibilityNodeInfo> {
         val nodes = mutableListOf<AccessibilityNodeInfo>()
-        eventSourceNode?.let { nodes.add(it) }
         activeWindowNode?.let { nodes.add(it) }
         val windowRoots = try {
             windows?.mapNotNull { window ->
