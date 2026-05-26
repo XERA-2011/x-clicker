@@ -42,5 +42,12 @@ data class Rule(
     val actionDelay: Long? = null,
     val actionMaximum: Int? = null,
     val matchRoot: Boolean = false,
-    val fastQuery: Boolean = false
+    val fastQuery: Boolean = false,
+    val matchDelay: Long? = null,
+    val matchTime: Long? = null,
+    val forcedTime: Long? = null,
+    val resetMatch: String? = null,
+    val action: String? = null,
+    val order: Int? = null
 )
+
