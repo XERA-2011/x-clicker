@@ -39,6 +39,33 @@ object ActionExecutor {
     }
 
     /**
+     * Execute GKD-specified actions.
+     */
+    fun performAction(service: AccessibilityService, node: AccessibilityNodeInfo, action: String?) {
+        when (action) {
+            "clickCenter" -> {
+                dispatchClickAtNodeCenter(service, node)
+            }
+            "clickNode" -> {
+                val result = node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                Log.i(TAG, "ACTION_CLICK (clickNode) result: $result")
+            }
+            "none" -> {
+                Log.i(TAG, "No-op action (none) triggered")
+            }
+            "back" -> {
+                val result = service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
+                Log.i(TAG, "GLOBAL_ACTION_BACK result: $result")
+            }
+            else -> {
+                // Default behavior: "click" (node action with center fallback)
+                performClick(service, node)
+            }
+        }
+    }
+
+
+    /**
      * 对标 GKD 的 ClickCenter performer。
      * 获取节点在屏幕上的绝对坐标，用 dispatchGesture 发送物理点击。
      *

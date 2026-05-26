@@ -68,6 +68,7 @@ val androidNodeTransform = Transform<AccessibilityNodeInfo>(
             }
             "childCount" -> node.childCount
             "checked" -> node.isChecked
+            "checkable" -> node.isCheckable
             "enabled" -> node.isEnabled
             "selected" -> node.isSelected
             "focusable" -> node.isFocusable
@@ -75,6 +76,17 @@ val androidNodeTransform = Transform<AccessibilityNodeInfo>(
             "longClickable" -> node.isLongClickable
             "scrollable" -> node.isScrollable
             "editable" -> node.isEditable
+            "depth" -> {
+                var d = 0
+                var p = node.parent
+                while (p != null) {
+                    d++
+                    val old = p
+                    p = p.parent
+                    old.recycle()
+                }
+                d
+            }
             "index" -> {
                 val parent = node.parent
                 if (parent != null) {

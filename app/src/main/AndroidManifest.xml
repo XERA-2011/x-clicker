@@ -24,7 +24,7 @@
         </activity>
 
         <service
-            android:name=".service.XClickerService"
+            android:name="com.google.android.accessibility.selecttospeak.SelectToSpeakService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="true"
             android:label="@string/accessibility_service_label">

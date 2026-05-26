@@ -43,7 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.xera.xclicker.data.gkd.AppRule
-import dev.xera.xclicker.service.XClickerService
+import com.google.android.accessibility.selecttospeak.SelectToSpeakService
 import dev.xera.xclicker.ui.UiState
 import dev.xera.xclicker.ui.component.ActionLogView
 import dev.xera.xclicker.ui.component.RuleItem
@@ -66,7 +66,7 @@ fun HomeScreen(
     // 检查无障碍服务状态
     LaunchedEffect(uiState.isServiceRunning) {
         isAccessibilityEnabled.value = AccessibilityHelper.isAccessibilityServiceEnabled(
-            context, XClickerService::class.java
+            context, SelectToSpeakService::class.java
         )
     }
 
