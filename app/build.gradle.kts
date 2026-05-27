@@ -43,7 +43,6 @@ android {
 }
 
 dependencies {
-    implementation(project(":selector"))
     // AndroidX Core
     implementation(libs.androidx.core.ktx)
 
@@ -65,16 +64,7 @@ dependencies {
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
 
-    // DataStore
-    implementation(libs.datastore.preferences)
-
-    // Testing
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
-    
     testImplementation(libs.junit)
-    testImplementation("org.mockito:mockito-core:5.11.0")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
     androidTestImplementation(libs.espresso.core)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
