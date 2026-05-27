@@ -20,8 +20,6 @@ import li.songe.gkd.data.RpcError
 import li.songe.gkd.data.info2nodeList
 import li.songe.gkd.db.DbSet
 import li.songe.gkd.notif.snapshotNotif
-import li.songe.gkd.service.ScreenshotService
-import li.songe.gkd.shizuku.shizukuContextFlow
 import li.songe.gkd.store.storeFlow
 import java.io.File
 import kotlin.math.min
@@ -209,8 +207,7 @@ object SnapshotExt {
             val (snapshot, screenResult) = coroutineScope {  // 快照数据+截图(图片 && 状态)
                 val d1 = async(Dispatchers.IO) {
                     val appId = rootNode.packageName.toString()
-                    var activityId = shizukuContextFlow.value.topCpn()?.className
-                    if (activityId == null) {
+                    var activityId: String? = null
                         var topActivity = topActivityFlow.value
                         var i = 0L
                         while (topActivity.appId != appId) {
@@ -223,7 +220,6 @@ object SnapshotExt {
                             }
                         }
                         activityId = topActivity.activityId
-                    }
                     ComplexSnapshot(
                         id = System.currentTimeMillis(),
                         appId = appId,
@@ -237,8 +233,6 @@ object SnapshotExt {
                 val d2 = async(Dispatchers.IO) {
                     val rawPicture =  // 获取原始图片
                         A11yRuleEngine.screenshot()  // 无障碍
-                        ?: ScreenshotService.screenshot() // 截图服务
-
                     val (finalBitmap, status) = when {
                         rawPicture == null -> {
                             emptyScreenBitmap("无截图权限\n请自行替换") to ScreenWhy.NotHave

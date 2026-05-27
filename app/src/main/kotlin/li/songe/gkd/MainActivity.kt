@@ -70,11 +70,7 @@ import li.songe.gkd.a11y.updateTopActivity
 import li.songe.gkd.permission.AuthDialog
 import li.songe.gkd.permission.updatePermissionState
 import li.songe.gkd.service.A11yService
-import li.songe.gkd.service.StatusService
-import li.songe.gkd.service.fixRestartAutomatorService
-import li.songe.gkd.service.updateTopTaskAppId
-import li.songe.gkd.shizuku.automationRegisteredExceptionFlow
-import li.songe.gkd.shizuku.shizukuContextFlow
+
 import li.songe.gkd.store.storeFlow
 import li.songe.gkd.ui.A11YScopeAppListRoute
 import li.songe.gkd.ui.A11yEventLogPage
@@ -86,8 +82,7 @@ import li.songe.gkd.ui.ActionLogPage
 import li.songe.gkd.ui.ActionLogRoute
 import li.songe.gkd.ui.ActivityLogPage
 import li.songe.gkd.ui.ActivityLogRoute
-import li.songe.gkd.ui.AdvancedPage
-import li.songe.gkd.ui.AdvancedPageRoute
+
 import li.songe.gkd.ui.AppConfigPage
 import li.songe.gkd.ui.AppConfigRoute
 import li.songe.gkd.ui.AppOpsAllowPage
@@ -251,10 +246,7 @@ class MainActivity : ComponentActivity() {
             intent = null
         }
         watchKeyboardVisible()
-        StatusService.autoStart()
-        if (storeFlow.value.enableBlockA11yAppList) {
-            updateTopTaskAppId(META.appId)
-        }
+
         setContent {
             val latestInsets = TopAppBarDefaults.windowInsets
             val density = LocalDensity.current
@@ -277,7 +269,7 @@ class MainActivity : ComponentActivity() {
                             entry<AuthA11yRoute> { AuthA11yPage() }
                             entry<AboutRoute> { AboutPage() }
                             entry<BlockA11yAppListRoute> { BlockA11yAppListPage() }
-                            entry<AdvancedPageRoute> { AdvancedPage() }
+
                             entry<SnapshotPageRoute> { SnapshotPage() }
                             entry<AppOpsAllowRoute> { AppOpsAllowPage() }
                             entry<A11YScopeAppListRoute> { A11yScopeAppListPage() }
@@ -314,9 +306,7 @@ class MainActivity : ComponentActivity() {
                     if (!mainVm.termsAcceptedFlow.collectAsState().value) {
                         TermsAcceptDialog()
                     } else {
-                        UiAutomationAlreadyRegisteredDlg()
                         AccessRestrictedSettingsDlg()
-                        ShizukuErrorDialog(mainVm.shizukuErrorFlow)
                         AuthDialog(mainVm.authReasonFlow)
                         BuildDialog(mainVm.dialogFlow)
                         mainVm.uploadOptions.ShowDialog()
@@ -401,91 +391,11 @@ fun syncFixState() {
         }
         syncStateMutex.withLock {
             updateSystemDefaultAppId()
-            shizukuContextFlow.value.grantSelf()
             updatePermissionState()
-            fixRestartAutomatorService()
         }
     }
 }
 
-@Composable
-private fun ShizukuErrorDialog(stateFlow: MutableStateFlow<Throwable?>) {
-    val state = stateFlow.collectAsState().value
-    if (state != null) {
-        val errorText = remember { state.stackTraceToString() }
-        val appInfoCache = appInfoMapFlow.collectAsState().value
-        val installed = appInfoCache.contains(shizukuAppId)
-        AlertDialog(
-            onDismissRequest = { stateFlow.value = null },
-            title = { Text(text = "授权错误") },
-            text = {
-                Column {
-                    Text(
-                        text = if (installed) {
-                            "Shizuku 授权失败，请检查是否运行"
-                        } else {
-                            "Shizuku 授权失败，检测到 Shizuku 未安装，请先下载后安装，如果你是通过其它方式授权，请忽略此提示自行查找原因"
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Box(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        SelectionContainer(
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .fillMaxWidth()
-                        ) {
-                            Text(
-                                text = errorText,
-                                modifier = Modifier
-                                    .clip(MaterialTheme.shapes.extraSmall)
-                                    .background(MaterialTheme.colorScheme.secondaryContainer)
-                                    .padding(8.dp)
-                                    .heightIn(max = 400.dp)
-                                    .verticalScroll(rememberScrollState()),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                        PerfIcon(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .clickable(onClick = throttle {
-                                    copyText(errorText)
-                                })
-                                .padding(4.dp)
-                                .size(20.dp),
-                            imageVector = PerfIcon.ContentCopy,
-                            tint = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.75f),
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                if (installed) {
-                    TextButton(onClick = {
-                        stateFlow.value = null
-                        openApp(shizukuAppId)
-                    }) {
-                        Text(text = "打开 Shizuku")
-                    }
-                } else {
-                    TextButton(onClick = {
-                        stateFlow.value = null
-                        openUri(ShortUrlSet.URL4)
-                    }) {
-                        Text(text = "去下载")
-                    }
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { stateFlow.value = null }) {
-                    Text(text = "我知道了")
-                }
-            }
-        )
-    }
-}
 
 
 val accessRestrictedSettingsShowFlow = MutableStateFlow(false)
@@ -537,24 +447,3 @@ fun AccessRestrictedSettingsDlg() {
     }
 }
 
-@Composable
-fun UiAutomationAlreadyRegisteredDlg() {
-    if (automationRegisteredExceptionFlow.collectAsState().value != null) {
-        AlertDialog(
-            onDismissRequest = {
-                automationRegisteredExceptionFlow.value = null
-            },
-            title = { Text(text = "启动失败") },
-            text = {
-                Text(text = "自动化服务启动失败，检测到自动化服务已被其他应用占用，请先关闭已有服务后重试\n\n注：自动化服务只能同时运行一个，请确保没有其他应用或测试框架占用后再启动")
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    automationRegisteredExceptionFlow.value = null
-                }) {
-                    Text(text = "我知道了")
-                }
-            }
-        )
-    }
-}

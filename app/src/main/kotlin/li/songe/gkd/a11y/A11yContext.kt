@@ -6,7 +6,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import kotlinx.atomicfu.atomic
 import li.songe.gkd.META
 import li.songe.gkd.data.ResolvedRule
-import li.songe.gkd.shizuku.casted
+
 import li.songe.gkd.util.InterruptRuleMatchException
 import li.songe.selector.FastQuery
 import li.songe.selector.MatchOption
@@ -279,13 +279,13 @@ class A11yContext(
         "longClickable" -> node.isLongClickable
         "visibleToUser" -> node.isVisibleToUser
 
-        "left" -> node.casted.boundsInScreen.left
-        "top" -> node.casted.boundsInScreen.top
-        "right" -> node.casted.boundsInScreen.right
-        "bottom" -> node.casted.boundsInScreen.bottom
+        "left" -> android.graphics.Rect().apply { node.getBoundsInScreen(this) }.left
+        "top" -> android.graphics.Rect().apply { node.getBoundsInScreen(this) }.top
+        "right" -> android.graphics.Rect().apply { node.getBoundsInScreen(this) }.right
+        "bottom" -> android.graphics.Rect().apply { node.getBoundsInScreen(this) }.bottom
 
-        "width" -> node.casted.boundsInScreen.width()
-        "height" -> node.casted.boundsInScreen.height()
+        "width" -> android.graphics.Rect().apply { node.getBoundsInScreen(this) }.width()
+        "height" -> android.graphics.Rect().apply { node.getBoundsInScreen(this) }.height()
 
         "index" -> getCacheIndex(node)
         "depth" -> getCacheDepth(node)

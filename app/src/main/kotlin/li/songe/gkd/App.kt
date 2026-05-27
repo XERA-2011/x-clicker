@@ -32,9 +32,7 @@ import li.songe.gkd.a11y.initA11yFeat
 import li.songe.gkd.data.CrashData
 import li.songe.gkd.data.selfAppInfo
 import li.songe.gkd.notif.initChannel
-import li.songe.gkd.service.clearHttpSubs
-import li.songe.gkd.service.initA11yWhiteAppList
-import li.songe.gkd.shizuku.initShizuku
+
 import li.songe.gkd.store.initStore
 import li.songe.gkd.util.AndroidTarget
 import li.songe.gkd.util.LogUtils
@@ -45,7 +43,7 @@ import li.songe.gkd.util.initSubsState
 import li.songe.gkd.util.initToast
 import li.songe.gkd.util.launchTry
 import li.songe.gkd.util.toast
-import org.lsposed.hiddenapibypass.HiddenApiBypass
+
 import kotlin.system.exitProcess
 
 
@@ -106,9 +104,7 @@ class App : Application() {
 
     override fun attachBaseContext(base: Context?) {
         super.attachBaseContext(base)
-        if (AndroidTarget.P) {
-            HiddenApiBypass.addHiddenApiExemptions("L")
-        }
+
     }
 
     fun registerObserver(
@@ -242,10 +238,7 @@ class App : Application() {
         initChannel()
         initAppState()
         initA11yFeat()
-        initShizuku()
-        initSubsState()
-        initA11yWhiteAppList()
-        clearHttpSubs()
+
         syncFixState()
     }
 }

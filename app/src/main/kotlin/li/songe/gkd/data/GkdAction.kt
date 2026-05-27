@@ -8,9 +8,7 @@ import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import li.songe.gkd.a11y.A11yRuleEngine
 import li.songe.gkd.service.A11yService
-import li.songe.gkd.service.TrackService
-import li.songe.gkd.shizuku.casted
-import li.songe.gkd.shizuku.shizukuContextFlow
+
 import li.songe.gkd.util.ScreenUtils
 
 @Serializable
@@ -41,7 +39,7 @@ sealed class ActionPerformer(val action: String) {
             node: AccessibilityNodeInfo,
             locationProps: RawSubscription.LocationProps,
         ): ActionResult {
-            TrackService.addA11yNodePosition(node)
+
             return ActionResult(
                 action = action,
                 result = node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
@@ -54,7 +52,7 @@ sealed class ActionPerformer(val action: String) {
             node: AccessibilityNodeInfo,
             locationProps: RawSubscription.LocationProps,
         ): ActionResult {
-            val rect = node.casted.boundsInScreen
+            val rect = android.graphics.Rect().apply { node.getBoundsInScreen(this) }
             val p = locationProps.position?.calc(rect)
             val x = p?.first ?: ((rect.right + rect.left) / 2f)
             val y = p?.second ?: ((rect.bottom + rect.top) / 2f)
@@ -65,12 +63,10 @@ sealed class ActionPerformer(val action: String) {
                     position = x to y,
                 )
             }
-            TrackService.addXyPosition(x, y)
+
             return ActionResult(
                 action = action,
-                result = if (shizukuContextFlow.value.tap(x, y)) {
-                    true
-                } else {
+                result = run {
                     val gestureDescription = GestureDescription.Builder()
                     val path = Path()
                     path.moveTo(x, y)
@@ -108,7 +104,7 @@ sealed class ActionPerformer(val action: String) {
             node: AccessibilityNodeInfo,
             locationProps: RawSubscription.LocationProps,
         ): ActionResult {
-            TrackService.addA11yNodePosition(node)
+
             return ActionResult(
                 action = action,
                 result = node.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK).apply {
@@ -126,7 +122,7 @@ sealed class ActionPerformer(val action: String) {
             node: AccessibilityNodeInfo,
             locationProps: RawSubscription.LocationProps,
         ): ActionResult {
-            val rect = node.casted.boundsInScreen
+            val rect = android.graphics.Rect().apply { node.getBoundsInScreen(this) }
             val p = locationProps.position?.calc(rect)
             val x = p?.first ?: ((rect.right + rect.left) / 2f)
             val y = p?.second ?: ((rect.bottom + rect.top) / 2f)
@@ -138,12 +134,10 @@ sealed class ActionPerformer(val action: String) {
                     position = x to y,
                 )
             }
-            TrackService.addXyPosition(x, y)
+
             return ActionResult(
                 action = action,
-                result = if (shizukuContextFlow.value.tap(x, y, LONG_DURATION)) {
-                    true
-                } else {
+                result = run {
                     val gestureDescription = GestureDescription.Builder()
                     val path = Path()
                     path.moveTo(x, y)
@@ -209,7 +203,7 @@ sealed class ActionPerformer(val action: String) {
             node: AccessibilityNodeInfo,
             locationProps: RawSubscription.LocationProps,
         ): ActionResult {
-            val rect = node.casted.boundsInScreen
+            val rect = android.graphics.Rect().apply { node.getBoundsInScreen(this) }
             val swipeArg = locationProps.swipeArg ?: return ActionResult(
                 action = action,
                 result = false,
@@ -233,22 +227,8 @@ sealed class ActionPerformer(val action: String) {
                     position = endX to endY,
                 )
             }
-            TrackService.addSwipePosition(startX, startY, endX, endY, swipeArg.duration)
-            return if (shizukuContextFlow.value.swipe(
-                    startX,
-                    startY,
-                    endX,
-                    endY,
-                    swipeArg.duration
-                )
-            ) {
-                ActionResult(
-                    action = action,
-                    result = true,
-                    shell = true,
-                    position = endX to endY,
-                )
-            } else {
+
+            return run {
                 val gestureDescription = GestureDescription.Builder()
                 val path = Path()
                 path.moveTo(startX, startY)

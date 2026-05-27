@@ -24,8 +24,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import li.songe.gkd.data.AppInfo
-import li.songe.gkd.data.otherUserMapFlow
-import li.songe.gkd.shizuku.currentUserId
+
 import li.songe.gkd.util.appInfoMapFlow
 
 @Composable
@@ -40,14 +39,7 @@ fun AppNameText(
     val info = appInfo ?: appInfoMapFlow.collectAsState().value[appId]
     val showSystemIcon = info?.isSystem == true
     val appName = (info?.name ?: fallbackName ?: appId ?: error("appId is required"))
-    val userName = info?.userId?.let { userId ->
-        if (userId == currentUserId) {
-            null
-        } else {
-            val userInfo = otherUserMapFlow.collectAsState().value[userId]
-            "「${userInfo?.name ?: userId}」"
-        }
-    }
+    val userName: String? = null
     val textDecoration = if (info?.enabled == false) TextDecoration.LineThrough else null
     if (!showSystemIcon && userName == null) {
         Text(

@@ -3,7 +3,7 @@ package li.songe.gkd.permission
 import android.Manifest
 import android.app.Activity
 import android.app.AppOpsManager
-import android.app.AppOpsManagerHidden
+
 import android.content.pm.PackageManager
 import android.provider.Settings
 import com.hjq.permissions.XXPermissions
@@ -19,15 +19,11 @@ import li.songe.gkd.MainActivity
 import li.songe.gkd.MainViewModel
 import li.songe.gkd.app
 import li.songe.gkd.appScope
-import li.songe.gkd.shizuku.SafeAppOpsService
-import li.songe.gkd.shizuku.SafePackageManager
-import li.songe.gkd.shizuku.shizukuContextFlow
 import li.songe.gkd.ui.AppOpsAllowRoute
 import li.songe.gkd.util.AndroidTarget
 import li.songe.gkd.util.toast
 import li.songe.gkd.util.updateAllAppInfo
 import li.songe.gkd.util.updateAppMutex
-import rikka.shizuku.Shizuku
 
 class PermissionState(
     val name: String,
@@ -101,7 +97,7 @@ val foregroundServiceSpecialUseState by lazy {
         name = "特殊用途的前台服务",
         check = {
             if (AndroidTarget.UPSIDE_DOWN_CAKE) {
-                checkAllowedOp(AppOpsManagerHidden.OPSTR_FOREGROUND_SERVICE_SPECIAL_USE)
+                checkAllowedOp("android:foreground_service_special_use")
             } else {
                 true
             }
@@ -121,7 +117,7 @@ val accessA11yState by lazy {
         name = "访问无障碍",
         check = {
             if (AndroidTarget.Q) {
-                checkAllowedOp(AppOpsManagerHidden.OPSTR_ACCESS_ACCESSIBILITY)
+                checkAllowedOp("android:access_accessibility")
             } else {
                 true
             }
@@ -133,11 +129,7 @@ val createA11yOverlayState by lazy {
     PermissionState(
         name = "创建无障碍悬浮窗",
         check = {
-            if (SafeAppOpsService.supportCreateA11yOverlay) {
-                checkAllowedOp(AppOpsManagerHidden.OPSTR_CREATE_ACCESSIBILITY_OVERLAY)
-            } else {
-                true
-            }
+            true
         },
     )
 }
@@ -161,7 +153,7 @@ val accessRestrictedSettingsState by lazy {
             if (canRestrictsRead && AndroidTarget.UPSIDE_DOWN_CAKE && getAppOpsStatsState.updateAndGet()) {
                 try {
                     // https://cs.android.com/android/platform/superproject/+/android-14.0.0_r55:frameworks/base/services/core/java/com/android/server/appop/AppOpsService.java;l=4237
-                    checkAllowedOp(AppOpsManagerHidden.OPSTR_ACCESS_RESTRICTED_SETTINGS)
+                    checkAllowedOp("android:access_restricted_settings")
                 } catch (_: SecurityException) {
                     // https://cs.android.com/android/platform/superproject/+/android-14.0.0_r54:frameworks/base/services/core/java/com/android/server/appop/AppOpsService.java;l=4227
                     canRestrictsRead = false
@@ -312,24 +304,7 @@ val writeSecureSettingsState by lazy {
     )
 }
 
-private fun shizukuCheckGranted(): Boolean {
-    if (Shizuku.getBinder()?.isBinderAlive != true) return false
-    val granted = try {
-        Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
-    } catch (_: Throwable) {
-        false
-    }
-    if (!granted) return false
-    val u = shizukuContextFlow.value.packageManager ?: SafePackageManager.newBinder()
-    return u?.isSafeMode != null
-}
 
-val shizukuGrantedState by lazy {
-    PermissionState(
-        name = "Shizuku 权限",
-        check = { shizukuCheckGranted() },
-    )
-}
 
 val allPermissionStates by lazy {
     listOf(
@@ -344,7 +319,6 @@ val allPermissionStates by lazy {
         ignoreBatteryOptimizationsState,
         writeSecureSettingsState,
         canQueryPkgState,
-        shizukuGrantedState,
     )
 }
 

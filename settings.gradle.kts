@@ -1,7 +1,6 @@
 rootProject.name = "x-clicker"
 include(
     ":app",
-    ":hidden_api",
     ":selector",
 )
 

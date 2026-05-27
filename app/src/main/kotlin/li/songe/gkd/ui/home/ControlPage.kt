@@ -44,13 +44,7 @@ import li.songe.gkd.data.SubsConfig
 import li.songe.gkd.permission.appOpsRestrictedFlow
 import li.songe.gkd.permission.writeSecureSettingsState
 import li.songe.gkd.service.A11yService
-import li.songe.gkd.service.ActivityService
-import li.songe.gkd.service.StatusService
-import li.songe.gkd.service.a11yPartDisabledFlow
-import li.songe.gkd.service.switchAutomatorService
-import li.songe.gkd.service.topAppIdFlow
-import li.songe.gkd.shizuku.shizukuContextFlow
-import li.songe.gkd.shizuku.uiAutomationFlow
+
 import li.songe.gkd.store.actualA11yScopeAppList
 import li.songe.gkd.store.storeFlow
 import li.songe.gkd.ui.ActionLogRoute
@@ -113,7 +107,6 @@ fun useControlPage(): ScaffoldExt {
         val store by storeFlow.collectAsState()
 
         val a11yRunning by A11yService.isRunning.collectAsState()
-        val manageRunning by StatusService.isRunning.collectAsState()
         val writeSecureSettings by writeSecureSettingsState.stateFlow.collectAsState()
 
         Column(
@@ -153,95 +146,26 @@ fun useControlPage(): ScaffoldExt {
                     }
                 }
             }
-            if (store.useA11y || actualA11yScopeAppList.contains(topAppIdFlow.collectAsState().value)) {
-                PageSwitchItemCard(
-                    imageVector = PerfIcon.Memory,
-                    title = "服务状态",
-                    subtitle = if (a11yRunning) {
-                        "无障碍正在运行"
-                    } else if (mainVm.a11yServiceEnabledFlow.collectAsState().value) {
-                        "无障碍发生故障"
-                    } else if (writeSecureSettings) {
-                        if (store.enableAutomator && a11yPartDisabledFlow.collectAsState().value) {
-                            "无障碍局部关闭"
-                        } else {
-                            "无障碍已关闭"
-                        }
-                    } else {
-                        "无障碍未授权"
-                    },
-                    checked = a11yRunning,
-                    onCheckedChange = { newEnabled ->
-                        if (newEnabled && !writeSecureSettingsState.value) {
-                            mainVm.navigatePage(AuthA11yRoute)
-                        } else {
-                            switchAutomatorService()
-                        }
-                    },
-                )
-            } else {
-                PageSwitchItemCard(
-                    imageVector = PerfIcon.Memory,
-                    title = "服务状态",
-                    subtitle = if (uiAutomationFlow.collectAsState().value != null) {
-                        "自动化正在运行"
-                    } else if (!shizukuContextFlow.collectAsState().value.ok) {
-                        "自动化未授权"
-                    } else {
-                        if (store.enableAutomator && a11yPartDisabledFlow.collectAsState().value) {
-                            "自动化局部关闭"
-                        } else {
-                            "自动化已关闭"
-                        }
-                    },
-                    checked = uiAutomationFlow.collectAsState().value != null,
-                    onCheckedChange = vm.viewModelScope.launchAsFn(Dispatchers.IO) { newEnabled ->
-                        if (newEnabled) {
-                            mainVm.guardShizukuContext()
-                        }
-                        switchAutomatorService()
-                    },
-                )
-            }
-
             PageSwitchItemCard(
-                imageVector = PerfIcon.Notifications,
-                title = "常驻通知",
-                subtitle = "显示运行状态及统计数据",
-                checked = manageRunning && store.enableStatusService,
-                onCheckedChange = vm.viewModelScope.launchAsFn<Boolean> {
-                    if (it) {
-                        StatusService.requestStart(context)
-                    } else {
-                        StatusService.stop()
-                        storeFlow.value = store.copy(
-                            enableStatusService = false
-                        )
+                imageVector = PerfIcon.Memory,
+                title = "服务状态",
+                subtitle = if (a11yRunning) {
+                    "无障碍正在运行"
+                } else if (mainVm.a11yServiceEnabledFlow.collectAsState().value) {
+                    "无障碍发生故障"
+                } else if (writeSecureSettings) {
+                    "无障碍已关闭"
+                } else {
+                    "无障碍未授权"
+                },
+                checked = a11yRunning,
+                onCheckedChange = { newEnabled ->
+                    if (newEnabled && !writeSecureSettingsState.value) {
+                        mainVm.navigatePage(AuthA11yRoute)
                     }
                 },
             )
 
-            ServerStatusCard()
-
-            PageItemCard(
-                title = "触发记录",
-                subtitle = "规则误触可定位关闭",
-                imageVector = PerfIcon.History,
-                onClickLabel = "打开触发记录页面",
-                onClick = {
-                    mainVm.navigatePage(ActionLogRoute())
-                })
-
-            if (ActivityService.isRunning.collectAsState().value) {
-                PageItemCard(
-                    title = "界面日志",
-                    subtitle = "记录打开的应用及界面",
-                    imageVector = PerfIcon.Layers,
-                    onClickLabel = "打开界面日志页面",
-                    onClick = {
-                        mainVm.navigatePage(ActivityLogRoute)
-                    })
-            }
 
             PageItemCard(
                 title = "了解 GKD",

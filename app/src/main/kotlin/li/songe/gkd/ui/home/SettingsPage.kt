@@ -63,18 +63,13 @@ import li.songe.gkd.permission.foregroundServiceSpecialUseState
 import li.songe.gkd.permission.ignoreBatteryOptimizationsState
 import li.songe.gkd.permission.notificationState
 import li.songe.gkd.permission.requiredPermission
-import li.songe.gkd.service.StatusService
-import li.songe.gkd.service.TrackService
-import li.songe.gkd.service.fixRestartAutomatorService
-import li.songe.gkd.shizuku.shizukuContextFlow
+
 import li.songe.gkd.store.storeFlow
-import li.songe.gkd.ui.AboutRoute
-import li.songe.gkd.ui.AdvancedPageRoute
-import li.songe.gkd.ui.BlockA11yAppListRoute
 import li.songe.gkd.ui.component.CustomOutlinedTextField
 import li.songe.gkd.ui.component.FullscreenDialog
 import li.songe.gkd.ui.component.PerfCustomIconButton
 import li.songe.gkd.ui.component.PerfIcon
+import li.songe.gkd.ui.AboutRoute
 import li.songe.gkd.ui.component.PerfIconButton
 import li.songe.gkd.ui.component.PerfTopAppBar
 import li.songe.gkd.ui.component.SettingItem
@@ -300,10 +295,7 @@ fun useSettingsPage(): ScaffoldExt {
     }
 
 
-    var showA11yBlockDlg by vm.showA11yBlockDlgFlow.asMutableState()
-    if (showA11yBlockDlg) {
-        BlockA11yDialog(onDismissRequest = { showA11yBlockDlg = false })
-    }
+
     if (vm.showBackupDlgFlow.collectAsState().value) {
         TextListDialog(
             onDismiss = { vm.showBackupDlgFlow.value = false },
@@ -415,26 +407,7 @@ fun useSettingsPage(): ScaffoldExt {
                                 useSystemToast = it
                             )
                         })
-                    TextSwitch(
-                        title = "轨迹提示",
-                        subtitle = "显示触发位置信息",
-                        checked = TrackService.isRunning.collectAsState().value,
-                        onCheckedChange = vm.viewModelScope.launchAsFn<Boolean> {
-                            if (it) {
-                                mainVm.dialogFlow.waitResult(
-                                    title = "使用须知",
-                                    text = "开启「轨迹提示」后点击或滑动后会在屏幕上使用悬浮窗绘制轨迹(一段时间后消失)，如果新触摸事件恰好在悬浮窗区域内，可能会被目标应用拒绝，从而导致点击或滑动无响应",
-                                    confirmText = "继续",
-                                )
-                                requiredPermission(context, foregroundServiceSpecialUseState)
-                                requiredPermission(context, notificationState)
-                                requiredPermission(context, canDrawOverlaysState)
-                                TrackService.start()
-                            } else {
-                                TrackService.stop()
-                            }
-                        }
-                    )
+
                 }
             }
 
@@ -472,39 +445,7 @@ fun useSettingsPage(): ScaffoldExt {
                     )
                 })
 
-            val scope = rememberCoroutineScope()
-            val lazyOn = remember {
-                storeFlow.mapState(scope) { it.enableBlockA11yAppList }.debounce(300)
-                    .stateIn(scope, SharingStarted.Eagerly, store.enableBlockA11yAppList)
-            }.collectAsState()
-            AnimatedVisibility(visible = lazyOn.value) {
-                Text(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .titleItemPadding(),
-                    text = "无障碍",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            TextSwitch(
-                title = "局部关闭",
-                subtitle = "白名单内关闭服务",
-                checked = store.enableBlockA11yAppList && shizukuContextFlow.collectAsState().value.ok,
-                onCheckedChange = vm.viewModelScope.launchAsFn<Boolean> {
-                    if (it) {
-                        showA11yBlockDlg = true
-                    } else {
-                        storeFlow.value = store.copy(enableBlockA11yAppList = false)
-                        fixRestartAutomatorService()
-                    }
-                },
-            )
-            AnimatedVisibility(visible = lazyOn.value) {
-                SettingItem(title = "白名单", onClickLabel = "进入无障碍白名单页面", onClick = {
-                    mainVm.navigatePage(BlockA11yAppListRoute)
-                })
-            }
+
 
             Text(
                 text = "外观",
@@ -538,9 +479,6 @@ fun useSettingsPage(): ScaffoldExt {
                 color = MaterialTheme.colorScheme.primary,
             )
 
-            SettingItem(title = "高级设置", onClick = {
-                mainVm.navigatePage(AdvancedPageRoute)
-            })
             SettingItem(title = "备份恢复", onClick = {
                 vm.showBackupDlgFlow.value = true
             })
@@ -554,165 +492,4 @@ fun useSettingsPage(): ScaffoldExt {
     }
 }
 
-@Composable
-private fun BlockA11yDialog(onDismissRequest: () -> Unit) = FullscreenDialog(onDismissRequest) {
-    val mainVm = LocalMainViewModel.current
-    val statusRunning by StatusService.isRunning.collectAsState()
-    val shizukuContext by shizukuContextFlow.collectAsState()
-    val ignoreBatteryOptimizations by ignoreBatteryOptimizationsState.stateFlow.collectAsState()
-    val context = LocalActivity.current as MainActivity
-    Scaffold(
-        topBar = {
-            PerfTopAppBar(
-                navigationIcon = {
-                    PerfIconButton(
-                        imageVector = PerfIcon.Close,
-                        onClickLabel = "关闭弹窗",
-                        onClick = onDismissRequest,
-                    )
-                },
-                title = {
-                    Text(text = "局部关闭")
-                },
-            )
-        },
-        bottomBar = {
-            BottomAppBar {
-                Spacer(modifier = Modifier.weight(1f))
-                TextButton(
-                    enabled = shizukuContext.ok && statusRunning && ignoreBatteryOptimizations,
-                    onClick = mainVm.viewModelScope.launchAsFn {
-                        onDismissRequest()
-                        delay(200)
-                        storeFlow.update { it.copy(enableBlockA11yAppList = true) }
-                    }
-                ) {
-                    Text(text = "继续")
-                }
-                Spacer(modifier = Modifier.width(itemHorizontalPadding))
-            }
-        },
-    ) { contentPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(contentPadding)
-                .padding(horizontal = itemHorizontalPadding)
-        ) {
-            CompositionLocalProvider(LocalTextStyle provides MaterialTheme.typography.bodyMedium) {
-                Text(text = "「局部关闭」可在白名单应用内关闭服务，来解决界面异常，游戏掉帧或无障碍检测的问题")
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(text = "使用须知", style = MaterialTheme.typography.titleMedium)
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    RequiredTextItem(text = "切换服务会造成短暂触摸卡顿，请自行测试后再编辑白名单")
-                    RequiredTextItem(text = "使用其它无障碍应用可能导致优化无效，可在服务关闭后自行确认")
-                    RequiredTextItem(text = "必须确保服务关闭后的持续后台运行，否则会被系统暂停或结束运行导致重启失败")
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(text = "使用条件", style = MaterialTheme.typography.titleMedium)
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    RequiredTextItem(
-                        text = "Shizuku 授权",
-                        enabled = !shizukuContext.ok,
-                        imageVector = if (shizukuContext.ok) PerfIcon.Check else PerfIcon.ArrowForward,
-                        onClick = mainVm.viewModelScope.launchAsFn(Dispatchers.IO) {
-                            mainVm.guardShizukuContext()
-                        },
-                    )
-                    RequiredTextItem(
-                        text = "开启「常驻通知」",
-                        enabled = !statusRunning,
-                        imageVector = if (statusRunning) PerfIcon.Check else PerfIcon.ArrowForward,
-                        onClick = mainVm.viewModelScope.launchAsFn {
-                            StatusService.requestStart(context)
-                        },
-                    )
-                    RequiredTextItem(
-                        text = "省电策略设置为无限制",
-                        enabled = !ignoreBatteryOptimizations,
-                        imageVector = if (ignoreBatteryOptimizations) PerfIcon.Check else PerfIcon.ArrowForward,
-                        onClickLabel = "打开忽略电池优化设置页面",
-                        onClick = mainVm.viewModelScope.launchAsFn {
-                            requiredPermission(context, ignoreBatteryOptimizationsState)
-                        },
-                    )
-                    RequiredTextItem(
-                        text = "(可选) 允许自启动",
-                        enabled = true,
-                        imageVector = PerfIcon.OpenInNew,
-                        onClickLabel = "打开应用详情页面",
-                        onClick = {
-                            openAppDetailsSettings()
-                        },
-                    )
-                    RequiredTextItem(
-                        text = "(可选) 在「最近任务」锁定",
-                        enabled = true,
-                        imageVector = PerfIcon.OpenInNew,
-                        onClickLabel = "打开应用详情页面",
-                        onClick = {
-                            val m = shizukuContextFlow.value.inputManager
-                            if (m != null) {
-                                m.key(KeyEvent.KEYCODE_APP_SWITCH)
-                            } else {
-                                toast("请先授权 Shizuku")
-                            }
-                        },
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(text = "某些场景下服务刚启动时概率不工作，如多次遇到此情况则不建议使用此功能")
-            }
-            Spacer(modifier = Modifier.height(EmptyHeight))
-        }
-    }
-}
 
-@Composable
-private fun RequiredTextItem(
-    text: String,
-    imageVector: ImageVector? = null,
-    enabled: Boolean = false,
-    onClick: (() -> Unit)? = null,
-    onClickLabel: String? = null,
-) {
-    Row(
-        modifier = Modifier
-            .clip(MaterialTheme.shapes.extraSmall)
-            .run {
-                if (onClick != null) {
-                    clickable(
-                        enabled = enabled,
-                        onClick = throttle(onClick),
-                        onClickLabel = onClickLabel
-                    )
-                } else {
-                    this
-                }
-            }
-            .padding(horizontal = 4.dp),
-    ) {
-        val lineHeightDp = LocalDensity.current.run { LocalTextStyle.current.lineHeight.toDp() }
-        Spacer(
-            modifier = Modifier
-                .padding(vertical = (lineHeightDp - 4.dp) / 2)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.tertiary)
-                .size(4.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(text = text)
-        if (imageVector != null) {
-            PerfIcon(
-                imageVector = imageVector,
-                modifier = Modifier.iconTextSize(),
-            )
-        }
-    }
-
-}

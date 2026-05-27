@@ -19,7 +19,6 @@ import li.songe.gkd.a11y.A11yCommonImpl
 import li.songe.gkd.a11y.A11yRuleEngine
 import li.songe.gkd.a11y.topActivityFlow
 import li.songe.gkd.a11y.updateTopActivity
-import li.songe.gkd.shizuku.shizukuContextFlow
 import li.songe.gkd.store.updateEnableAutomator
 import li.songe.gkd.util.AndroidTarget
 import li.songe.gkd.util.AutomatorModeOption
@@ -106,12 +105,7 @@ abstract class A11yService : AccessibilityService(), OnA11yLife by DefaultA11yLi
         onA11yConnected { instance = this }
         onDestroyed { instance = null }
         onCreated {
-            if (currentAppUseA11y) {
-                updateEnableAutomator(true)
-            } else {
-                toast("当前为自动化模式，无障碍将自动关闭", forced = true)
-                runMainPost(1) { shutdown(true) }
-            }
+            updateEnableAutomator(true)
         }
         onDestroyed {
             if (tempShutdownFlag) {
@@ -122,24 +116,11 @@ abstract class A11yService : AccessibilityService(), OnA11yLife by DefaultA11yLi
             }
         }
         useAliveOverlayView()
-        onCreated { StatusService.autoStart() }
-        onDestroyed {
-            synchronized(topActivityFlow) {
-                shizukuContextFlow.value.topCpn()?.let { cpn ->
-                    // com.android.systemui
-                    if (!topActivityFlow.value.sameAs(cpn.packageName, cpn.className)) {
-                        updateTopActivity(cpn.packageName, cpn.className)
-                    }
-                }
-            }
-        }
         onDestroyed { destroyed = true }
         onA11yConnected {
             connected = true
             toast("无障碍已启动")
-            if (currentAppUseA11y) {
-                ruleEngine.onA11yConnected()
-            }
+            ruleEngine.onA11yConnected()
         }
         onCreated {
             runMainPost(3000) {
