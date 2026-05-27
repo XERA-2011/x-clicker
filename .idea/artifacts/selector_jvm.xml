@@ -1,0 +1,6 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="selector-jvm">
+    <output-path>$PROJECT_DIR$/selector/build/libs</output-path>
+    <root id="archive" name="selector-jvm.jar" />
+  </artifact>
+</component>
