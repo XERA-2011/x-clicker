@@ -34,7 +34,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.serialization.Serializable
 import li.songe.gkd.MainActivity
 import li.songe.gkd.R
-import li.songe.gkd.service.fixRestartAutomatorService
+
 import li.songe.gkd.store.blockA11yAppListFlow
 import li.songe.gkd.store.storeFlow
 import li.songe.gkd.ui.component.AnimatedBooleanContent
@@ -179,7 +179,6 @@ fun BlockA11yAppListPage() {
                                     onClick = throttle {
                                         showSearchBar = false
                                         storeFlow.update { it.copy(blockA11yAppListFollowMatch = !it.blockA11yAppListFollowMatch) }
-                                        fixRestartAutomatorService()
                                     }
                                 )
 

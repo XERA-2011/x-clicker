@@ -98,13 +98,6 @@ fun AppOpsAllowPage() {
                     AuthButtonGroup(
                         modifier = Modifier.fillMaxWidth(),
                         buttons = listOf(
-                            "Shizuku 授权" to vm.viewModelScope.launchAsFn(Dispatchers.IO) {
-                                mainVm.guardShizukuContext()
-                                toast("授权成功")
-                            },
-                            "命令授权" to {
-                                vm.showCopyDlgFlow.value = true
-                            },
                             "卸载重装" to {
                                 mainVm.dialogFlow.updateDialogOptions(
                                     title = "卸载重装",
@@ -130,14 +123,6 @@ fun AppOpsAllowPage() {
         }
     }
 
-    val showCopyDlg by vm.showCopyDlgFlow.collectAsState()
-    ManualAuthDialog(
-        commandText = gkdStartCommandText,
-        show = showCopyDlg,
-        onUpdateShow = {
-            vm.showCopyDlgFlow.value = it
-        }
-    )
 }
 
 @Composable

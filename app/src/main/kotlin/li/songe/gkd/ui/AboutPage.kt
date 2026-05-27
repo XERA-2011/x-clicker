@@ -213,79 +213,7 @@ fun AboutPage() {
                     mainVm.openUrl(REPOSITORY_URL)
                 },
             )
-            if (META.isGkdChannel) {
-                SettingItem(
-                    imageVector = null,
-                    title = "捐赠支持",
-                    onClick = {
-                        mainVm.navigateWebPage(ShortUrlSet.URL10)
-                    },
-                )
-            }
-            SettingItem(
-                imageVector = null,
-                title = "使用协议",
-                onClick = {
-                    mainVm.navigateWebPage(ShortUrlSet.URL12)
-                },
-            )
-            SettingItem(
-                imageVector = null,
-                title = "隐私政策",
-                onClick = {
-                    mainVm.navigateWebPage(ShortUrlSet.URL11)
-                },
-            )
 
-            Text(
-                text = "反馈",
-                modifier = Modifier.titleItemPadding(),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Column(
-                modifier = Modifier
-                    .clickable(onClick = throttle(mainVm.viewModelScope.launchAsFn {
-                        mainVm.dialogFlow.waitResult(
-                            title = "反馈须知",
-                            textContent = {
-                                Text(text = buildAnnotatedString {
-                                    val highlightStyle = SpanStyle(
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                    )
-                                    append("感谢您愿意花时间反馈，")
-                                    withStyle(style = highlightStyle) {
-                                        append("GKD 默认不携带任何规则，只接受应用本体功能相关的反馈")
-                                    }
-                                    append("\n\n")
-                                    append("请先判断是不是第三方规则订阅的问题，如果是，您应该向规则提供者反馈，而不是在此处反馈。")
-                                    withStyle(style = highlightStyle) {
-                                        append("如果您已经确信是 GKD 应用本体的问题")
-                                    }
-                                    append("，可点击下方继续反馈")
-                                })
-                            },
-                            confirmText = "继续",
-                            dismissRequest = true,
-                        )
-                        mainVm.openUrl(ISSUES_URL)
-                    }))
-                    .fillMaxWidth()
-                    .itemPadding()
-            ) {
-                Text(
-                    text = "问题反馈",
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-            }
-            SettingItem(
-                title = "导出日志",
-                imageVector = PerfIcon.Share,
-                onClick = {
-                    mainVm.showShareLogDlgFlow.value = true
-                }
-            )
             if (mainVm.updateStatus != null) {
                 Text(
                     text = "更新",

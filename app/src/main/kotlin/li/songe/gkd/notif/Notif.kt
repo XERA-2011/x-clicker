@@ -17,12 +17,7 @@ import li.songe.gkd.R
 import li.songe.gkd.app
 import li.songe.gkd.permission.foregroundServiceSpecialUseState
 import li.songe.gkd.permission.notificationState
-import li.songe.gkd.service.ActivityService
-import li.songe.gkd.service.ButtonService
-import li.songe.gkd.service.EventService
-import li.songe.gkd.service.HttpService
-import li.songe.gkd.service.ScreenshotService
-import li.songe.gkd.service.TrackService
+
 import li.songe.gkd.util.AndroidTarget
 import li.songe.gkd.util.componentName
 import kotlin.reflect.KClass
@@ -101,28 +96,6 @@ val abNotif by lazy {
     )
 }
 
-val screenshotNotif = Notif(
-    id = 101,
-    title = "截屏服务正在运行",
-    text = "保存快照时截取屏幕",
-    uri = "gkd://page/1",
-    stopService = ScreenshotService::class,
-)
-
-val buttonNotif = Notif(
-    id = 102,
-    title = "快照按钮服务正在运行",
-    text = "点击按钮捕获快照",
-    uri = "gkd://page/1",
-    stopService = ButtonService::class,
-)
-
-val httpNotif = Notif(
-    id = 103,
-    title = "HTTP服务正在运行",
-    uri = "gkd://page/1",
-    stopService = HttpService::class,
-)
 
 val exposeNotif = Notif(
     id = 104,
@@ -139,23 +112,3 @@ val snapshotNotif = Notif(
     uri = "gkd://page/2",
 )
 
-val recordNotif = Notif(
-    id = 106,
-    title = "记录服务正在运行",
-    uri = "gkd://page/1",
-    stopService = ActivityService::class,
-)
-
-val eventNotif = Notif(
-    id = 107,
-    title = "事件服务正在运行",
-    uri = "gkd://page/1",
-    stopService = EventService::class,
-)
-
-val trackNotif = Notif(
-    id = 108,
-    title = "轨迹服务正在运行",
-    uri = "gkd://page?tab=3",
-    stopService = TrackService::class,
-)

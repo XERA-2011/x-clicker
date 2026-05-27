@@ -10,8 +10,7 @@ import li.songe.gkd.data.AppInfo
 import li.songe.gkd.data.UserInfo
 import li.songe.gkd.data.otherUserMapFlow
 import li.songe.gkd.permission.allPermissionStates
-import li.songe.gkd.shizuku.currentUserId
-import li.songe.gkd.shizuku.shizukuContextFlow
+
 import java.io.File
 
 fun File.autoMk(): File {
@@ -86,7 +85,7 @@ fun clearCache() {
 
 @Serializable
 private data class AppJsonData(
-    val userId: Int = currentUserId,
+    val userId: Int = 0,
     val apps: List<AppInfo> = userAppInfoMapFlow.value.values.toList(),
     val otherUsers: List<UserInfo> = otherUserMapFlow.value.values.toList(),
     val othersApps: List<AppInfo> = otherUserAppInfoMapFlow.value.values.toList(),
@@ -100,12 +99,7 @@ fun buildLogFile(): File {
         it.writeText(json.encodeToString(AppJsonData()))
         files.add(it)
     }
-    tempDir.resolve("shizuku.txt").also {
-        it.writeText(shizukuContextFlow.value.states.joinToString("\n") { state ->
-            state.first + ": " + state.second.toString()
-        })
-        files.add(it)
-    }
+
     tempDir.resolve("permission.txt").also {
         it.writeText(allPermissionStates.joinToString("\n") { state ->
             state.name + ": " + state.stateFlow.value.toString()

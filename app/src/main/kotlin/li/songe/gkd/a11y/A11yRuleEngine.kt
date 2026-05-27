@@ -28,10 +28,7 @@ import li.songe.gkd.data.RpcError
 import li.songe.gkd.data.RuleStatus
 import li.songe.gkd.isActivityVisible
 import li.songe.gkd.service.A11yService
-import li.songe.gkd.service.EventService
-import li.songe.gkd.service.topAppIdFlow
-import li.songe.gkd.shizuku.shizukuContextFlow
-import li.songe.gkd.shizuku.uiAutomationFlow
+
 import li.songe.gkd.store.actualBlockA11yAppList
 import li.songe.gkd.store.storeFlow
 import li.songe.gkd.util.AndroidTarget
@@ -57,26 +54,16 @@ private val latestServiceTime = atomic(0L)
 class A11yRuleEngine(val service: A11yCommonImpl) {
     private val a11yContext = A11yContext(this)
     private val effective get() = latestServiceMode.value == service.mode.value
-    private val hasOthersService = when (service.mode) {
-        AutomatorModeOption.A11yMode -> uiAutomationFlow.value != null
-        AutomatorModeOption.AutomationMode -> A11yService.instance != null
-    }
+    private val hasOthersService = false
 
     fun onA11yConnected() {
         val serviceTime = System.currentTimeMillis()
         latestServiceMode.value = service.mode.value
         latestServiceTime.value = serviceTime
-        if (storeFlow.value.enableBlockA11yAppList && !actualBlockA11yAppList.contains(topAppIdFlow.value)) {
+        if (storeFlow.value.enableBlockA11yAppList && !actualBlockA11yAppList.contains(topActivityFlow.value.appId)) {
             startQueryJob(byForced = true)
         }
-        runMainPost(1000L) {// 共存 1000ms, 等待另一个服务稳定
-            if (latestServiceTime.value == serviceTime) {
-                when (service.mode) {
-                    AutomatorModeOption.A11yMode -> uiAutomationFlow.value?.shutdown(true)
-                    AutomatorModeOption.AutomationMode -> A11yService.instance?.shutdown(true)
-                }
-            }
-        }
+
     }
 
     fun onScreenForcedActive() {
@@ -138,7 +125,7 @@ class A11yRuleEngine(val service: A11yCommonImpl) {
             }
             lastContentEventTime = a11yEvent.time
         }
-        EventService.logEvent(event)
+
         if (META.debuggable) {
             Log.d(
                 "onNewA11yEvent",
@@ -188,12 +175,9 @@ class A11yRuleEngine(val service: A11yCommonImpl) {
         if (rightAppId != topActivityFlow.value.appId) {
             synchronized(topActivityFlow) {
                 // 从 锁屏，下拉通知栏 返回等情况, 应用不会发送事件, 但是系统组件会发送事件
-                val topCpn = shizukuContextFlow.value.topCpn()
-                if (topCpn?.packageName == rightAppId) {
-                    updateTopActivity(topCpn.packageName, topCpn.className)
-                } else {
+                updateTopActivity(rightAppId, null)
                     updateTopActivity(rightAppId, null)
-                }
+
             }
         }
         val activityRule = activityRuleFlow.value
@@ -213,7 +197,7 @@ class A11yRuleEngine(val service: A11yCommonImpl) {
         // https://github.com/gkd-kit/gkd/issues/622
         lastAppId = withTimeoutOrNull(100) {
             runInterruptible(Dispatchers.IO) { safeActiveWindowAppId }
-        } ?: shizukuContextFlow.value.topCpn()?.packageName
+        }
         lastGetAppIdTime = System.currentTimeMillis()
         return lastAppId
     }
@@ -292,12 +276,9 @@ class A11yRuleEngine(val service: A11yCommonImpl) {
     private fun fixAppId(rightAppId: String) {
         if (topActivityFlow.value.appId == rightAppId) return
         synchronized(topActivityFlow) {
-            val topCpn = shizukuContextFlow.value.topCpn()
-            if (topCpn?.packageName == rightAppId) {
-                updateTopActivity(topCpn.packageName, topCpn.className)
-            } else {
+            updateTopActivity(rightAppId, null)
                 updateTopActivity(rightAppId, null)
-            }
+
         }
         scope.launch(actionDispatcher) {
             delay(300)
@@ -443,9 +424,7 @@ class A11yRuleEngine(val service: A11yCommonImpl) {
 
     companion object {
         val service: A11yCommonImpl?
-            get() = uiAutomationFlow.value?.takeIf {
-                it.mode.value == latestServiceMode.value
-            } ?: A11yService.instance
+            get() = A11yService.instance
         val instance: A11yRuleEngine? get() = service?.ruleEngine
 
         fun compatWindows(): List<AccessibilityWindowInfo> {
@@ -461,8 +440,7 @@ class A11yRuleEngine(val service: A11yCommonImpl) {
         }
 
         fun performActionBack(): Boolean {
-            val r1 = shizukuContextFlow.value.inputManager?.key(KeyEvent.KEYCODE_BACK)
-            if (r1 != null) return true
+
             return A11yService.instance?.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK) == true
         }
 

@@ -7,11 +7,10 @@ import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import kotlinx.serialization.Serializable
 import li.songe.gkd.app
-import li.songe.gkd.shizuku.casted
-import li.songe.gkd.shizuku.currentUserId
-import li.songe.gkd.shizuku.shizukuContextFlow
 import li.songe.gkd.util.AndroidTarget
 import li.songe.gkd.util.pkgIcon
+
+val currentUserId = 0
 
 @Serializable
 data class AppInfo(
@@ -76,10 +75,7 @@ private fun PackageInfo.getEnabled(userId: Int): Boolean {
         if (userId == currentUserId) {
             app.packageManager.getApplicationEnabledSetting(packageName)
         } else {
-            shizukuContextFlow.value.packageManager?.getApplicationEnabledSetting(
-                packageName,
-                currentUserId
-            )
+            PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
         }
     } catch (_: IllegalArgumentException) {
         null
@@ -108,7 +104,7 @@ fun PackageInfo.toAppInfo(
         mtime = lastUpdateTime,
         isSystem = isSystem,
         name = applicationInfo?.run { loadLabel(app.packageManager).toString() } ?: packageName,
-        hidden = hidden ?: (isSystem && (casted.overlayTarget != null || !checkHasActivity(
+        hidden = hidden ?: (isSystem && (!checkHasActivity(
             packageName
         ))),
         enabled = getEnabled(userId),

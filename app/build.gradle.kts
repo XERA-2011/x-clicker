@@ -249,27 +249,21 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso)
 
-    compileOnly(project(":hidden_api"))
-    implementation(libs.rikka.shizuku.api)
-    implementation(libs.rikka.shizuku.provider)
-    implementation(libs.lsposed.hiddenapibypass)
+    compileOnly(libs.loc.annotation)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.room.paging)
     ksp(libs.androidx.room.compiler)
 
-    implementation(libs.androidx.paging.runtime)
     implementation(libs.androidx.paging.compose)
-
-    implementation(libs.ktor.server.core)
-    implementation(libs.ktor.server.cio)
-    implementation(libs.ktor.server.content.negotiation)
 
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.okhttp)
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.serialization.kotlinx.json)
+
+    implementation(libs.androidx.paging.compose)
 
     implementation(libs.google.accompanist.drawablepainter)
 
@@ -299,4 +293,5 @@ dependencies {
     compileOnly(libs.loc.annotation)
 
     implementation(libs.kevinnzouWebview)
+    implementation(kotlin("reflect"))
 }

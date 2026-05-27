@@ -24,14 +24,9 @@ import li.songe.gkd.data.RawSubscription
 import li.songe.gkd.data.SubsItem
 import li.songe.gkd.db.DbSet
 import li.songe.gkd.permission.AuthReason
-import li.songe.gkd.permission.shizukuGrantedState
 import li.songe.gkd.service.A11yService
-import li.songe.gkd.shizuku.shizukuContextFlow
-import li.songe.gkd.shizuku.uiAutomationFlow
-import li.songe.gkd.shizuku.updateBinderMutex
 import li.songe.gkd.store.createTextFlow
 import li.songe.gkd.store.storeFlow
-import li.songe.gkd.ui.AdvancedPageRoute
 import li.songe.gkd.ui.AppOpsAllowRoute
 import li.songe.gkd.ui.CrashReportRoute
 import li.songe.gkd.ui.SnapshotPageRoute
@@ -69,9 +64,8 @@ import li.songe.gkd.util.toast
 import li.songe.gkd.util.updateSubsMutex
 import li.songe.gkd.util.updateSubscription
 import li.songe.loc.Loc
-import rikka.shizuku.Shizuku
-import java.nio.file.Files
 import kotlin.reflect.jvm.jvmName
+import java.nio.file.Files
 import kotlin.time.Duration.Companion.days
 
 class MainViewModel : BaseViewModel(), OnSimpleLife by DefaultSimpleLifeImpl() {
@@ -234,7 +228,6 @@ class MainViewModel : BaseViewModel(), OnSimpleLife by DefaultSimpleLifeImpl() {
                     }
                 }
 
-                "/1" -> navigatePage(AdvancedPageRoute)
                 "/2" -> navigatePage(SnapshotPageRoute)
                 "/3" -> navigatePage(AppOpsAllowRoute)
                 else -> notFoundToast()
@@ -255,8 +248,6 @@ class MainViewModel : BaseViewModel(), OnSimpleLife by DefaultSimpleLifeImpl() {
         val source = intent.getStringExtra(activityNavSourceName)
         if (uri?.scheme == "gkd") {
             handleGkdUri(uri)
-        } else if (source == OpenFileActivity::class.jvmName && uri != null) {
-            withContext(Dispatchers.IO) { BackupUtils.importBackUpData(uri) }
         }
     }
 
@@ -288,39 +279,7 @@ class MainViewModel : BaseViewModel(), OnSimpleLife by DefaultSimpleLifeImpl() {
         )
     }
 
-    fun switchEnableShizuku(value: Boolean) {
-        if (updateBinderMutex.mutex.isLocked) {
-            toast("正在连接中，请稍后")
-            return
-        }
-        storeFlow.update { s -> s.copy(enableShizuku = value) }
-    }
 
-    fun requestShizuku() {
-        if (shizukuContextFlow.value.ok) return
-        if (updateBinderMutex.mutex.isLocked) {
-            toast("正在连接中，请稍后")
-            return
-        }
-        try {
-            Shizuku.requestPermission(Activity.RESULT_OK)
-        } catch (e: Throwable) {
-            shizukuErrorFlow.value = e
-        }
-    }
-
-    suspend fun guardShizukuContext() {
-        if (shizukuContextFlow.value.ok) return
-        if (!storeFlow.value.enableShizuku) {
-            storeFlow.update { it.copy(enableShizuku = true) }
-        }
-        if (!shizukuGrantedState.updateAndGet()) {
-            requestShizuku()
-            stopCoroutine()
-        }
-        if (shizukuContextFlow.value.ok) return
-        stopCoroutine()
-    }
 
     private val a11yServicesFlow = useEnabledA11yServicesFlow()
     val a11yServiceEnabledFlow = useA11yServiceEnabledFlow(a11yServicesFlow)
@@ -333,7 +292,7 @@ class MainViewModel : BaseViewModel(), OnSimpleLife by DefaultSimpleLifeImpl() {
         if (automatorModeFlow.value == option) return
         storeFlow.update { it.copy(automatorMode = option.value, enableAutomator = false) }
         A11yService.instance?.shutdown()
-        uiAutomationFlow.value?.shutdown()
+
     }
 
     val showShareLogDlgFlow = MutableStateFlow(false)
