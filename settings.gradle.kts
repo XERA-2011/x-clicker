@@ -14,4 +14,3 @@ dependencyResolutionManagement {
 }
 rootProject.name = "x-clicker"
 include(":app")
-include(":selector")
