@@ -87,7 +87,6 @@ import li.songe.gkd.ui.style.iconTextSize
 import li.songe.gkd.ui.style.itemHorizontalPadding
 import li.songe.gkd.ui.style.titleItemPadding
 import li.songe.gkd.util.AndroidTarget
-import li.songe.gkd.util.DarkThemeOption
 import li.songe.gkd.util.findOption
 import li.songe.gkd.util.launchAsFn
 import li.songe.gkd.util.mapState
@@ -415,31 +414,6 @@ fun useSettingsPage(): ScaffoldExt {
                 })
 
 
-
-            Text(
-                text = "外观",
-                modifier = Modifier.titleItemPadding(),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
-
-            TextMenu(
-                title = "深色模式",
-                option = DarkThemeOption.objects.findOption(store.enableDarkTheme),
-                onOptionChange = {
-                    storeFlow.update { s -> s.copy(enableDarkTheme = it.value) }
-                }
-            )
-
-            if (AndroidTarget.S) {
-                TextSwitch(
-                    title = "动态配色",
-                    checked = store.enableDynamicColor,
-                    onCheckedChange = {
-                        storeFlow.update { s -> s.copy(enableDynamicColor = it) }
-                    }
-                )
-            }
 
             Text(
                 text = "其他",
