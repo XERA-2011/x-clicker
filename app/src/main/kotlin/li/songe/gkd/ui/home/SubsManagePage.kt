@@ -190,9 +190,7 @@ fun useSubsManagePage(): ScaffoldExt {
                                 selectedIds
                             }
                             if (canDeleteIds.isNotEmpty()) {
-                                val text = "确定删除所选 ${canDeleteIds.size} 个订阅?".let { s ->
-                                    if (selectedIds.contains(LOCAL_SUBS_ID)) "$s\n\n注: 不包含本地订阅" else s
-                                }
+                                val text = "确定删除所选 ${canDeleteIds.size} 个订阅?"
                                 PerfIconButton(
                                     imageVector = PerfIcon.Delete,
                                     contentDescription = "删除选中订阅",
@@ -210,6 +208,17 @@ fun useSubsManagePage(): ScaffoldExt {
                                     },
                                 )
                             }
+                            PerfIconButton(
+                                imageVector = PerfIcon.MoreVert,
+                                contentDescription = "更多操作",
+                                onClick = {
+                                    if (updateSubsMutex.mutex.isLocked) {
+                                        toast("正在刷新订阅，请稍后操作")
+                                    } else {
+                                        expanded = true
+                                    }
+                                }
+                            )
                         } else {
                             val ruleSummary by ruleSummaryFlow.collectAsState()
                             AnimatedVisibility(
@@ -252,16 +261,7 @@ fun useSubsManagePage(): ScaffoldExt {
                         }
                     }
                 }
-                PerfIconButton(
-                    imageVector = PerfIcon.MoreVert,
-                    contentDescription = "更多操作",
-                    onClick = {
-                        if (updateSubsMutex.mutex.isLocked) {
-                            toast("正在刷新订阅，请稍后操作")
-                        } else {
-                            expanded = true
-                        }
-                    })
+
                 Box(
                     modifier = Modifier.wrapContentSize(Alignment.TopStart)
                 ) {
@@ -293,35 +293,6 @@ fun useSubsManagePage(): ScaffoldExt {
                                         }
                                         selectedIds = newSelectedIds
                                     }
-                                )
-                            } else {
-                                DropdownMenuItem(
-                                    text = { Text(text = "添加应用规则") },
-                                    onClick = throttle {
-                                        expanded = false
-                                        mainVm.navigatePage(
-                                            UpsertRuleGroupRoute(
-                                                subsId = LOCAL_SUBS_ID,
-                                                groupKey = null,
-                                                appId = "",
-                                                forward = true,
-                                            )
-                                        )
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(text = "添加全局规则") },
-                                    onClick = throttle {
-                                        expanded = false
-                                        mainVm.navigatePage(
-                                            UpsertRuleGroupRoute(
-                                                subsId = LOCAL_SUBS_ID,
-                                                groupKey = null,
-                                                appId = null,
-                                                forward = true,
-                                            )
-                                        )
-                                    },
                                 )
                             }
                         }

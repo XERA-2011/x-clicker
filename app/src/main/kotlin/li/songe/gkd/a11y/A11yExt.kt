@@ -38,6 +38,19 @@ fun useA11yServiceEnabledFlow(servicesFlow: StateFlow<Set<ComponentName>> = useE
     }
 }
 
+fun setA11yServiceEnabled(enabled: Boolean) {
+    val services = app.getSecureA11yServices()
+    if (enabled) {
+        services.add(A11yService.a11yCn)
+    } else {
+        services.remove(A11yService.a11yCn)
+    }
+    app.putSecureA11yServices(services)
+    if (enabled) {
+        app.putSecureInt(Settings.Secure.ACCESSIBILITY_ENABLED, 1)
+    }
+}
+
 const val STATE_CHANGED = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
 const val CONTENT_CHANGED = AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
 

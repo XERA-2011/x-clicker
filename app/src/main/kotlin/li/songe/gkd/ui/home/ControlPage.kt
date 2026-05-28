@@ -160,8 +160,18 @@ fun useControlPage(): ScaffoldExt {
                 },
                 checked = a11yRunning,
                 onCheckedChange = { newEnabled ->
-                    if (newEnabled && !writeSecureSettingsState.value) {
-                        mainVm.navigatePage(AuthA11yRoute)
+                    if (newEnabled) {
+                        if (!writeSecureSettingsState.value) {
+                            mainVm.navigatePage(AuthA11yRoute)
+                        } else {
+                            li.songe.gkd.a11y.setA11yServiceEnabled(true)
+                        }
+                    } else {
+                        if (writeSecureSettingsState.value) {
+                            li.songe.gkd.a11y.setA11yServiceEnabled(false)
+                        } else {
+                            li.songe.gkd.service.A11yService.instance?.disableSelf()
+                        }
                     }
                 },
             )
