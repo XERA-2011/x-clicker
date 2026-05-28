@@ -303,27 +303,6 @@ class MainViewModel : BaseViewModel(), OnSimpleLife by DefaultSimpleLifeImpl() {
         // preload
         appIconMapFlow.value
         viewModelScope.launchTry(Dispatchers.IO) {
-            val subsItems = DbSet.subsItemDao.queryAll()
-            if (!subsItems.any { s -> s.id == LOCAL_SUBS_ID }) {
-                if (!subsFolder.resolve("${LOCAL_SUBS_ID}.json").exists()) {
-                    updateSubscription(
-                        RawSubscription(
-                            id = LOCAL_SUBS_ID,
-                            name = "本地订阅",
-                            version = 0
-                        )
-                    )
-                }
-                DbSet.subsItemDao.insert(
-                    SubsItem(
-                        id = LOCAL_SUBS_ID,
-                        order = subsItems.minByOrNull { it.order }?.order ?: 0,
-                    )
-                )
-            }
-        }
-
-        viewModelScope.launchTry(Dispatchers.IO) {
             // 每次进入删除缓存
             clearCache()
         }
