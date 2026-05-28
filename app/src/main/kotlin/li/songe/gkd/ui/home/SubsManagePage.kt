@@ -62,6 +62,7 @@ import li.songe.gkd.ui.component.TextMenu
 import li.songe.gkd.ui.component.TextSwitch
 import li.songe.gkd.ui.component.usePinnedScrollBehaviorState
 import li.songe.gkd.ui.component.waitResult
+import li.songe.gkd.ui.component.EmptyText
 import li.songe.gkd.ui.share.ListPlaceholder
 import li.songe.gkd.ui.share.LocalMainViewModel
 import li.songe.gkd.ui.style.EmptyHeight
@@ -184,11 +185,7 @@ fun useSubsManagePage(): ScaffoldExt {
                 ) {
                     Row {
                         if (it) {
-                            val canDeleteIds = if (selectedIds.contains(LOCAL_SUBS_ID)) {
-                                selectedIds - LOCAL_SUBS_ID
-                            } else {
-                                selectedIds
-                            }
+                            val canDeleteIds = selectedIds
                             if (canDeleteIds.isNotEmpty()) {
                                 val text = "确定删除所选 ${canDeleteIds.size} 个订阅?"
                                 PerfIconButton(
@@ -427,6 +424,9 @@ fun useSubsManagePage(): ScaffoldExt {
                 }
                 item(ListPlaceholder.KEY, ListPlaceholder.TYPE) {
                     Spacer(modifier = Modifier.height(EmptyHeight))
+                    if (orderSubItems.isEmpty()) {
+                        EmptyText(text = "暂无订阅")
+                    }
                 }
             }
         }

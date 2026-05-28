@@ -384,23 +384,21 @@ fun SubsSheet(
                         sheetSubsIdFlow.value = null
                         mainVm.navigatePage(ActionLogRoute(subsId = subsItem.id))
                     })
-                    if (subsItem.id != LOCAL_SUBS_ID) {
-                        PerfIconButton(
-                            imageVector = PerfIcon.Delete,
-                            onClick = throttle(
-                                vm.viewModelScope.launchAsFn {
-                                    mainVm.dialogFlow.waitResult(
-                                        title = "删除订阅",
-                                        text = "确定删除 ${subscription?.name ?: subsItem.id} ?",
-                                        error = true,
-                                    )
-                                    sheetSubsIdFlow.value = null
-                                    setSubsId(null)
-                                    deleteSubscription(subsItem.id)
-                                }
-                            ),
-                        )
-                    }
+                    PerfIconButton(
+                        imageVector = PerfIcon.Delete,
+                        onClick = throttle(
+                            vm.viewModelScope.launchAsFn {
+                                mainVm.dialogFlow.waitResult(
+                                    title = "删除订阅",
+                                    text = "确定删除 ${subscription?.name ?: subsItem.id} ?",
+                                    error = true,
+                                )
+                                sheetSubsIdFlow.value = null
+                                setSubsId(null)
+                                deleteSubscription(subsItem.id)
+                            }
+                        ),
+                    )
                 }
                 Spacer(modifier = Modifier.height(EmptyHeight / 2))
             }
