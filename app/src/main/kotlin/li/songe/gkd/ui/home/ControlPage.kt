@@ -167,14 +167,7 @@ fun useControlPage(): ScaffoldExt {
             )
 
 
-            PageItemCard(
-                title = "了解 GKD",
-                subtitle = "查阅规则文档和常见问题",
-                imageVector = PerfIcon.HelpOutline,
-                onClickLabel = "打开 GKD 文档页面",
-                onClick = {
-                    mainVm.navigatePage(WebViewRoute(initUrl = HOME_PAGE_URL))
-                })
+
             Spacer(modifier = Modifier.height(EmptyHeight))
         }
     }
