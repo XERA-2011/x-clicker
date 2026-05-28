@@ -87,7 +87,6 @@ import li.songe.gkd.ui.style.iconTextSize
 import li.songe.gkd.ui.style.itemHorizontalPadding
 import li.songe.gkd.ui.style.titleItemPadding
 import li.songe.gkd.util.AndroidTarget
-import li.songe.gkd.util.BackupUtils
 import li.songe.gkd.util.DarkThemeOption
 import li.songe.gkd.util.findOption
 import li.songe.gkd.util.launchAsFn
@@ -296,37 +295,7 @@ fun useSettingsPage(): ScaffoldExt {
 
 
 
-    if (vm.showBackupDlgFlow.collectAsState().value) {
-        TextListDialog(
-            onDismiss = { vm.showBackupDlgFlow.value = false },
-            textList = listOf(
-                "导入备份" to vm.viewModelScope.launchAsFn(Dispatchers.IO) {
-                    val uri = context.pickFile("application/zip")
-                    if (uri != null) {
-                        BackupUtils.importBackUpData(uri)
-                    }
-                },
-                "导出备份" to {
-                    vm.showExportBackupDlgFlow.value = true
-                },
-            )
-        )
-    }
-    if (vm.showExportBackupDlgFlow.collectAsState().value) {
-        TextListDialog(
-            onDismiss = { vm.showExportBackupDlgFlow.value = false },
-            textList = listOf(
-                "分享到其他应用" to vm.viewModelScope.launchAsFn(Dispatchers.IO) {
-                    val file = BackupUtils.exportBackUpData()
-                    context.shareFile(file, "分享备份文件")
-                },
-                "保存到下载" to vm.viewModelScope.launchAsFn(Dispatchers.IO) {
-                    val file = BackupUtils.exportBackUpData()
-                    context.saveFileToDownloads(file)
-                },
-            )
-        )
-    }
+
 
     val scrollKey = rememberSaveable { mutableIntStateOf(0) }
     val (scrollBehavior, scrollState) = useScrollBehaviorState(scrollKey)
@@ -479,9 +448,6 @@ fun useSettingsPage(): ScaffoldExt {
                 color = MaterialTheme.colorScheme.primary,
             )
 
-            SettingItem(title = "备份恢复", onClick = {
-                vm.showBackupDlgFlow.value = true
-            })
 
             SettingItem(title = "关于", onClick = {
                 mainVm.navigatePage(AboutRoute)

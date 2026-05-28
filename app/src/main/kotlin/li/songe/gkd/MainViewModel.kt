@@ -39,7 +39,6 @@ import li.songe.gkd.ui.home.BottomNavItem
 import li.songe.gkd.ui.home.HomeRoute
 import li.songe.gkd.ui.share.BaseViewModel
 import li.songe.gkd.util.AutomatorModeOption
-import li.songe.gkd.util.BackupUtils
 import li.songe.gkd.util.DefaultSimpleLifeImpl
 import li.songe.gkd.util.LOCAL_SUBS_ID
 import li.songe.gkd.util.LogUtils
