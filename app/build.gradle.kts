@@ -68,7 +68,7 @@ android {
         minSdk = rootProject.ext["android.minSdk"] as Int
         targetSdk = rootProject.ext["android.targetSdk"] as Int
 
-        applicationId = "li.songe.gkd"
+        applicationId = "com.xera.xclicker"
         versionCode = 92
         versionName = "1.12.1"
 
@@ -95,12 +95,12 @@ android {
         resValues = true
     }
 
-    val gkdSigningConfig = if (project.hasProperty("GKD_STORE_FILE")) {
-        signingConfigs.create("gkd") {
-            storeFile = file(project.properties["GKD_STORE_FILE"] as String)
-            storePassword = project.findProperty("GKD_STORE_PASSWORD")?.toString()
-            keyAlias = project.findProperty("GKD_KEY_ALIAS")?.toString()
-            keyPassword = project.findProperty("GKD_KEY_PASSWORD")?.toString()
+    val xclickerSigningConfig = if (project.hasProperty("XCLICKER_STORE_FILE")) {
+        signingConfigs.create("xclicker") {
+            storeFile = file(project.properties["XCLICKER_STORE_FILE"] as String)
+            storePassword = project.findProperty("XCLICKER_STORE_PASSWORD")?.toString()
+            keyAlias = project.findProperty("XCLICKER_KEY_ALIAS")?.toString()
+            keyPassword = project.findProperty("XCLICKER_KEY_PASSWORD")?.toString()
         }
     } else {
         signingConfigs.getByName("debug")
@@ -114,7 +114,7 @@ android {
             keyPassword = project.properties["PLAY_KEY_PASSWORD"].toString()
         }
     } else {
-        gkdSigningConfig
+        xclickerSigningConfig
     }
 
     buildTypes {
@@ -131,7 +131,7 @@ android {
             )
         }
         debug {
-            signingConfig = gkdSigningConfig
+            signingConfig = xclickerSigningConfig
             applicationIdSuffix = ".debug"
             resValue("color", "better_black", "#FF5D92")
             debugSuffixPairList.onEach { (key, value) ->
@@ -141,9 +141,9 @@ android {
     }
     productFlavors {
         flavorDimensions += "channel"
-        create("gkd") {
+        create("xclicker") {
             isDefault = true
-            signingConfig = gkdSigningConfig
+            signingConfig = xclickerSigningConfig
             resValue("bool", "is_accessibility_tool", "true")
         }
         create("play") {
@@ -173,11 +173,11 @@ android {
     )
 }
 
-if (project.hasProperty("GKD_RENAME_APK_FLAG")) {
+if (project.hasProperty("XCLICKER_RENAME_APK_FLAG")) {
     androidComponents.onVariants { variant ->
         variant.outputs.onEach { output ->
             output as VariantOutputImpl
-            output.outputFileName = "gkd-v${output.versionName.get()}.apk"
+            output.outputFileName = "xclicker-v${output.versionName.get()}.apk"
         }
     }
 }

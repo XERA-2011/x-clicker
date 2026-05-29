@@ -1,0 +1,64 @@
+package com.xera.xclicker.ui
+
+import androidx.compose.runtime.mutableIntStateOf
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.map
+import com.xera.xclicker.store.a11yScopeAppListFlow
+import com.xera.xclicker.store.storeFlow
+import com.xera.xclicker.ui.share.BaseViewModel
+import com.xera.xclicker.ui.share.asMutableStateFlow
+import com.xera.xclicker.ui.share.useAppFilter
+import com.xera.xclicker.util.AppListString
+import com.xera.xclicker.util.AppSortOption
+import com.xera.xclicker.util.findOption
+
+class A11yScopeAppListVm : BaseViewModel() {
+    val sortTypeFlow = storeFlow.asMutableStateFlow(
+        getter = { AppSortOption.objects.findOption(it.a11yScopeAppSort) },
+        setter = {
+            storeFlow.value.copy(a11yScopeAppSort = it.value)
+        }
+    )
+    val appGroupTypeFlow = storeFlow.asMutableStateFlow(
+        getter = { it.a11yScopeAppGroupType },
+        setter = {
+            storeFlow.value.copy(a11yScopeAppGroupType = it)
+        }
+    )
+    val appFilter = useAppFilter(
+        appGroupTypeFlow = appGroupTypeFlow,
+        sortTypeFlow = sortTypeFlow,
+    )
+    val searchStrFlow = appFilter.searchStrFlow
+
+    val showSearchBarFlow = MutableStateFlow(false)
+    val appInfosFlow = appFilter.appListFlow
+
+    val resetKey = mutableIntStateOf(0)
+    val editableFlow = MutableStateFlow(false)
+
+    val textFlow = MutableStateFlow("")
+    val textChanged get() = a11yScopeAppListFlow.value != AppListString.decode(textFlow.value)
+
+    val indicatorSizeFlow = textFlow.debounce(500).map {
+        AppListString.decode(it).size
+    }.stateInit(0)
+
+    init {
+        showSearchBarFlow.launchCollect {
+            if (!it) {
+                searchStrFlow.value = ""
+            }
+        }
+        editableFlow.launchOnChange {
+            if (it) {
+                showSearchBarFlow.value = false
+                textFlow.value = AppListString.encode(a11yScopeAppListFlow.value, append = true)
+            }
+        }
+        appInfosFlow.launchOnChange {
+            resetKey.intValue++
+        }
+    }
+}
