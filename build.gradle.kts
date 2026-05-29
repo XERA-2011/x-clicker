@@ -2,7 +2,7 @@ import nl.littlerobots.vcu.plugin.versionSelector
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 ext {
-    set("android.namespace", "li.songe.gkd")
+    set("android.namespace", "com.xera.xclicker")
     set("android.buildToolsVersion", "37.0.0")
     set("android.compileSdk", 37)
     set("android.targetSdk", 37)

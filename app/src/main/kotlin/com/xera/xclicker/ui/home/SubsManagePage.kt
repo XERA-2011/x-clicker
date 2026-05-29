@@ -1,0 +1,434 @@
+package com.xera.xclicker.ui.home
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.update
+import com.xera.xclicker.R
+import com.xera.xclicker.data.Value
+import com.xera.xclicker.db.DbSet
+import com.xera.xclicker.store.storeFlow
+import com.xera.xclicker.store.switchStoreEnableMatch
+import com.xera.xclicker.ui.SlowGroupRoute
+import com.xera.xclicker.ui.UpsertRuleGroupRoute
+import com.xera.xclicker.ui.WebViewRoute
+import com.xera.xclicker.ui.component.AnimationFloatingActionButton
+import com.xera.xclicker.ui.component.PerfIcon
+import com.xera.xclicker.ui.component.PerfIconButton
+import com.xera.xclicker.ui.component.PerfTopAppBar
+import com.xera.xclicker.ui.component.ScaffoldDialog
+import com.xera.xclicker.ui.component.SubsItemCard
+import com.xera.xclicker.ui.component.TextMenu
+import com.xera.xclicker.ui.component.TextSwitch
+import com.xera.xclicker.ui.component.usePinnedScrollBehaviorState
+import com.xera.xclicker.ui.component.waitResult
+import com.xera.xclicker.ui.component.EmptyText
+import com.xera.xclicker.ui.share.ListPlaceholder
+import com.xera.xclicker.ui.share.LocalMainViewModel
+import com.xera.xclicker.ui.style.EmptyHeight
+import com.xera.xclicker.util.LOCAL_SUBS_ID
+import com.xera.xclicker.util.ShortUrlSet
+import com.xera.xclicker.util.UpdateTimeOption
+import com.xera.xclicker.util.checkSubsUpdate
+import com.xera.xclicker.util.deleteSubscription
+import com.xera.xclicker.util.findOption
+import com.xera.xclicker.util.getUpDownTransform
+import com.xera.xclicker.util.launchAsFn
+import com.xera.xclicker.util.launchTry
+import com.xera.xclicker.util.mapState
+import com.xera.xclicker.util.ruleSummaryFlow
+import com.xera.xclicker.util.subsItemsFlow
+import com.xera.xclicker.util.subsMapFlow
+import com.xera.xclicker.util.throttle
+import com.xera.xclicker.util.toast
+import com.xera.xclicker.util.updateSubsMutex
+import com.xera.xclicker.util.usedSubsEntriesFlow
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
+
+@Composable
+fun useSubsManagePage(): ScaffoldExt {
+    val mainVm = LocalMainViewModel.current
+
+    val vm = viewModel<HomeVm>()
+    val subItems by subsItemsFlow.collectAsState()
+    val subsIdToRaw by subsMapFlow.collectAsState()
+
+    var orderSubItems by remember {
+        mutableStateOf(subItems)
+    }
+    LaunchedEffect(subItems) {
+        orderSubItems = subItems
+    }
+
+    val refreshing by updateSubsMutex.state.collectAsState()
+    val pullToRefreshState = rememberPullToRefreshState()
+    var isSelectedMode by remember { mutableStateOf(false) }
+    var selectedIds by remember { mutableStateOf(emptySet<Long>()) }
+    val draggedFlag = remember { Value(false) }
+    LaunchedEffect(key1 = isSelectedMode) {
+        if (!isSelectedMode && selectedIds.isNotEmpty()) {
+            selectedIds = emptySet()
+        }
+    }
+    BackHandler(isSelectedMode) {
+        isSelectedMode = false
+    }
+    LaunchedEffect(key1 = subItems.size) {
+        if (subItems.size <= 1) {
+            isSelectedMode = false
+        }
+    }
+
+    var showSettingsDlg by remember { mutableStateOf(false) }
+    if (showSettingsDlg) {
+        ScaffoldDialog(
+            onClose = { showSettingsDlg = false },
+            title = "订阅设置",
+            content = {
+                val store by storeFlow.collectAsState()
+                TextMenu(
+                    title = "更新订阅",
+                    option = UpdateTimeOption.objects.findOption(store.updateSubsInterval)
+                ) {
+                    storeFlow.update { s -> s.copy(updateSubsInterval = it.value) }
+                }
+                TextSwitch(
+                    title = "耗电警告",
+                    subtitle = "启用多条订阅时弹窗确认",
+                    checked = store.subsPowerWarn,
+                    onCheckedChange = throttle<Boolean> {
+                        storeFlow.update { s -> s.copy(subsPowerWarn = it) }
+                    }
+                )
+            }
+        )
+    }
+
+    val scrollKey = rememberSaveable { mutableIntStateOf(0) }
+    val (scrollBehavior, lazyListState) = usePinnedScrollBehaviorState(scrollKey)
+    LaunchedEffect(null) {
+        mainVm.resetPageScrollEvent.collect {
+            if (it == BottomNavItem.SubsManage) {
+                scrollKey.intValue++
+            }
+        }
+    }
+    return ScaffoldExt(
+        navItem = BottomNavItem.SubsManage,
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            PerfTopAppBar(scrollBehavior = scrollBehavior, navigationIcon = {
+                if (isSelectedMode) {
+                    PerfIconButton(
+                        imageVector = PerfIcon.Close,
+                        contentDescription = "取消选择",
+                        onClick = { isSelectedMode = false },
+                    )
+                }
+            }, title = {
+                if (isSelectedMode) {
+                    Text(
+                        text = if (selectedIds.isNotEmpty()) selectedIds.size.toString() else "",
+                    )
+                } else {
+                    Text(
+                        text = BottomNavItem.SubsManage.label,
+                    )
+                }
+            }, actions = {
+                var expanded by remember { mutableStateOf(false) }
+                AnimatedContent(
+                    targetState = isSelectedMode,
+                    transitionSpec = { getUpDownTransform() },
+                    contentAlignment = Alignment.TopEnd,
+                ) {
+                    Row {
+                        if (it) {
+                            val canDeleteIds = selectedIds
+                            if (canDeleteIds.isNotEmpty()) {
+                                val text = "确定删除所选 ${canDeleteIds.size} 个订阅?"
+                                PerfIconButton(
+                                    imageVector = PerfIcon.Delete,
+                                    contentDescription = "删除选中订阅",
+                                    onClick = vm.viewModelScope.launchAsFn {
+                                        mainVm.dialogFlow.waitResult(
+                                            title = "删除订阅",
+                                            text = text,
+                                            error = true,
+                                        )
+                                        deleteSubscription(*canDeleteIds.toLongArray())
+                                        selectedIds = selectedIds - canDeleteIds
+                                        if (selectedIds.size == canDeleteIds.size) {
+                                            isSelectedMode = false
+                                        }
+                                    },
+                                )
+                            }
+                            PerfIconButton(
+                                imageVector = PerfIcon.MoreVert,
+                                contentDescription = "更多操作",
+                                onClick = {
+                                    if (updateSubsMutex.mutex.isLocked) {
+                                        toast("正在刷新订阅，请稍后操作")
+                                    } else {
+                                        expanded = true
+                                    }
+                                }
+                            )
+                        } else {
+                            val ruleSummary by ruleSummaryFlow.collectAsState()
+                            AnimatedVisibility(
+                                visible = ruleSummary.slowGroupCount > 0,
+                                enter = scaleIn(),
+                                exit = scaleOut(),
+                            ) {
+                                PerfIconButton(
+                                    imageVector = PerfIcon.Eco,
+                                    contentDescription = "缓慢查询规则列表",
+                                    onClickLabel = "查看列表",
+                                    onClick = throttle {
+                                        mainVm.navigatePage(SlowGroupRoute)
+                                    })
+                            }
+                            val scope = rememberCoroutineScope()
+                            val enableMatch by remember {
+                                storeFlow.mapState(scope) { s -> s.enableMatch }
+                            }.collectAsState()
+                            PerfIconButton(
+                                id = if (enableMatch) R.drawable.ic_flash_on else R.drawable.ic_flash_off,
+                                colors = IconButtonDefaults.iconButtonColors(
+                                    contentColor = if (!enableMatch) {
+                                        CheckboxDefaults.colors().checkedBoxColor
+                                    } else {
+                                        LocalContentColor.current
+                                    }
+                                ),
+                                contentDescription = "规则匹配" + if (enableMatch) "已启用" else "已禁用",
+                                onClickLabel = "切换开关",
+                                onClick = throttle { switchStoreEnableMatch() },
+                            )
+                            PerfIconButton(
+                                id = R.drawable.ic_page_info,
+                                contentDescription = "订阅设置",
+                                onClickLabel = "打开设置弹窗",
+                                onClick = {
+                                    showSettingsDlg = true
+                                })
+                        }
+                    }
+                }
+
+                Box(
+                    modifier = Modifier.wrapContentSize(Alignment.TopStart)
+                ) {
+                    key(isSelectedMode) {
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            if (isSelectedMode) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(text = "全选")
+                                    },
+                                    onClick = {
+                                        expanded = false
+                                        selectedIds = subItems.map { it.id }.toSet()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(text = "反选")
+                                    },
+                                    onClick = {
+                                        expanded = false
+                                        val newSelectedIds =
+                                            subItems.map { it.id }.toSet() - selectedIds
+                                        if (newSelectedIds.isEmpty()) {
+                                            isSelectedMode = false
+                                        }
+                                        selectedIds = newSelectedIds
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            })
+        },
+        floatingActionButton = {
+            AnimationFloatingActionButton(
+                contentDescription = "添加订阅",
+                onClickLabel = "打开添加订阅弹窗",
+                visible = !isSelectedMode,
+                onClick = {
+                    if (updateSubsMutex.mutex.isLocked) {
+                        toast("正在刷新订阅,请稍后操作")
+                    } else {
+                        mainVm.viewModelScope.launchTry {
+                            val url = mainVm.inputSubsLinkOption.getResult() ?: return@launchTry
+                            mainVm.addOrModifySubs(url)
+                        }
+                    }
+                },
+                imageVector = PerfIcon.Add,
+            )
+        },
+    ) { contentPadding ->
+        val reorderableLazyColumnState =
+            rememberReorderableLazyListState(lazyListState) { from, to ->
+                orderSubItems = orderSubItems.toMutableList().apply {
+                    add(to.index, removeAt(from.index))
+                    forEachIndexed { index, subsItem ->
+                        if (subsItem.order != index) {
+                            this[index] = subsItem.copy(order = index)
+                        }
+                    }
+                }
+                draggedFlag.value = true
+            }
+        PullToRefreshBox(
+            modifier = Modifier.padding(contentPadding),
+            state = pullToRefreshState,
+            isRefreshing = refreshing,
+            onRefresh = { checkSubsUpdate(true) }
+        ) {
+            LazyColumn(
+                state = lazyListState,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                itemsIndexed(orderSubItems, { _, subItem -> subItem.id }) { index, subItem ->
+                    val canDrag = !refreshing && orderSubItems.size > 1
+                    ReorderableItem(
+                        state = reorderableLazyColumnState,
+                        key = subItem.id,
+                        enabled = canDrag,
+                    ) {
+                        val interactionSource = remember { MutableInteractionSource() }
+                        SubsItemCard(
+                            modifier = Modifier.longPressDraggableHandle(
+                                enabled = canDrag,
+                                interactionSource = interactionSource,
+                                onDragStarted = {
+                                    if (orderSubItems.size > 1 && !isSelectedMode) {
+                                        isSelectedMode = true
+                                        selectedIds = setOf(subItem.id)
+                                    }
+                                },
+                                onDragStopped = {
+                                    if (draggedFlag.value) {
+                                        draggedFlag.value = false
+                                        isSelectedMode = false
+                                        selectedIds = emptySet()
+                                    }
+                                    val changeItems = orderSubItems.filter { newItem ->
+                                        subItems.find { oldItem -> oldItem.id == newItem.id }?.order != newItem.order
+                                    }
+                                    if (changeItems.isNotEmpty()) {
+                                        vm.viewModelScope.launchTry {
+                                            DbSet.subsItemDao.batchUpdateOrder(changeItems)
+                                        }
+                                    }
+                                },
+                            ),
+                            interactionSource = interactionSource,
+                            subsItem = subItem,
+                            subscription = subsIdToRaw[subItem.id],
+                            index = index + 1,
+                            isSelectedMode = isSelectedMode,
+                            isSelected = selectedIds.contains(subItem.id),
+                            onCheckedChange = mainVm.viewModelScope.launchAsFn { checked ->
+                                if (checked && storeFlow.value.subsPowerWarn && !subItem.isLocal && usedSubsEntriesFlow.value.any { !it.subsItem.isLocal }) {
+                                    mainVm.dialogFlow.waitResult(
+                                        title = "耗电警告",
+                                        textContent = {
+                                            Column {
+                                                Text(text = "启用多个远程订阅可能导致执行大量重复规则, 这可能造成规则执行卡顿以及多余耗电\n\n请认真考虑后再确认开启！！！\n")
+                                                Text(
+                                                    text = "查看耗电说明",
+                                                    modifier = Modifier.clickable(onClick = throttle {
+                                                        mainVm.dialogFlow.value = null
+                                                        mainVm.navigatePage(
+                                                            WebViewRoute(
+                                                                initUrl = ShortUrlSet.URL6
+                                                            )
+                                                        )
+                                                    }),
+                                                    textDecoration = TextDecoration.Underline,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                )
+                                            }
+                                        },
+                                        confirmText = "仍然启用",
+                                        error = true
+                                    )
+                                }
+                                DbSet.subsItemDao.updateEnable(subItem.id, checked)
+                            },
+                            onSelectedChange = {
+                                val newSelectedIds = if (selectedIds.contains(subItem.id)) {
+                                    selectedIds.toMutableSet().apply {
+                                        remove(subItem.id)
+                                    }
+                                } else {
+                                    selectedIds + subItem.id
+                                }
+                                selectedIds = newSelectedIds
+                                if (newSelectedIds.isEmpty()) {
+                                    isSelectedMode = false
+                                }
+                            },
+                        )
+                    }
+                }
+                item(ListPlaceholder.KEY, ListPlaceholder.TYPE) {
+                    Spacer(modifier = Modifier.height(EmptyHeight))
+                    if (orderSubItems.isEmpty()) {
+                        EmptyText(text = "暂无订阅")
+                    }
+                }
+            }
+        }
+    }
+}
