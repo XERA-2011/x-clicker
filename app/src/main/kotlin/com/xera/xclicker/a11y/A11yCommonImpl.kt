@@ -7,7 +7,6 @@ import kotlinx.coroutines.CoroutineScope
 import com.xera.xclicker.util.AutomatorModeOption
 
 interface A11yCommonImpl {
-    suspend fun screenshot(): Bitmap?
     val windowNodeInfo: AccessibilityNodeInfo?
     val windowInfos: List<AccessibilityWindowInfo>
     val scope: CoroutineScope

@@ -16,7 +16,6 @@ import com.xera.xclicker.appScope
 import com.xera.xclicker.store.storeFlow
 import com.xera.xclicker.util.LogUtils
 import com.xera.xclicker.util.ScreenUtils
-import com.xera.xclicker.util.SnapshotExt
 import com.xera.xclicker.util.UpdateTimeOption
 import com.xera.xclicker.util.checkSubsUpdate
 import com.xera.xclicker.util.launchTry
@@ -33,7 +32,7 @@ import li.songe.selector.getIntInvoke
 
 fun onA11yFeatEvent(event: AccessibilityEvent) = event.run {
     if (event.eventType == STATE_CHANGED) {
-        watchCaptureScreenshot()
+
         if (event.packageName == launcherAppId) {
 
             watchAutoUpdateSubs()
@@ -95,22 +94,6 @@ private val a11yEventTransform by lazy {
     )
 }
 
-context(event: AccessibilityEvent)
-private fun watchCaptureScreenshot() {
-    if (!storeFlow.value.captureScreenshot) return
-    if (event.packageName != storeFlow.value.screenshotTargetAppId) return
-    if (tempEventSelector.first != storeFlow.value.screenshotEventSelector) {
-        tempEventSelector =
-            storeFlow.value.screenshotEventSelector to Selector.parseOrNull(storeFlow.value.screenshotEventSelector)
-    }
-    val selector = tempEventSelector.second ?: return
-    selector.match(event, a11yEventTransform, MatchOption(fastQuery = false)).let {
-        if (it == null) return
-    }
-    appScope.launchTry {
-        // captureSnapshot removed
-    }
-}
 
 private var lastUpdateSubsTime = 0L
 private fun watchAutoUpdateSubs() {

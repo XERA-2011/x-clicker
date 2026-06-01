@@ -36,37 +36,7 @@ abstract class A11yService : AccessibilityService(), OnA11yLife by DefaultA11yLi
     override val mode get() = AutomatorModeOption.A11yMode
     override val windowNodeInfo: AccessibilityNodeInfo? get() = rootInActiveWindow
     override val windowInfos: List<AccessibilityWindowInfo> get() = windows
-    override suspend fun screenshot(): Bitmap? = suspendCancellableCoroutine { cont ->
-        if (AndroidTarget.R) {
-            takeScreenshot(
-                Display.DEFAULT_DISPLAY,
-                application.mainExecutor,
-                object : TakeScreenshotCallback {
-                    override fun onFailure(errorCode: Int) {
-                        if (cont.isActive) {
-                            cont.resume(null)
-                        }
-                    }
 
-                    override fun onSuccess(screenshot: ScreenshotResult) {
-                        try {
-                            if (cont.isActive) {
-                                cont.resume(
-                                    Bitmap.wrapHardwareBuffer(
-                                        screenshot.hardwareBuffer, screenshot.colorSpace
-                                    )
-                                )
-                            }
-                        } finally {
-                            screenshot.hardwareBuffer.close()
-                        }
-                    }
-                }
-            )
-        } else {
-            cont.resume(null)
-        }
-    }
 
     override val ruleEngine by lazy { A11yRuleEngine(this) }
 

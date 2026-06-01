@@ -29,7 +29,7 @@ import com.xera.xclicker.store.createTextFlow
 import com.xera.xclicker.store.storeFlow
 import com.xera.xclicker.ui.AppOpsAllowRoute
 import com.xera.xclicker.ui.CrashReportRoute
-import com.xera.xclicker.ui.SnapshotPageRoute
+
 import com.xera.xclicker.ui.WebViewRoute
 import com.xera.xclicker.ui.component.AlertDialogOptions
 import com.xera.xclicker.ui.component.InputSubsLinkOption
@@ -227,7 +227,7 @@ class MainViewModel : BaseViewModel(), OnSimpleLife by DefaultSimpleLifeImpl() {
                     }
                 }
 
-                "/2" -> navigatePage(SnapshotPageRoute)
+
                 "/3" -> navigatePage(AppOpsAllowRoute)
                 else -> notFoundToast()
             }

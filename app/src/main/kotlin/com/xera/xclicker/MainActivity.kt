@@ -99,8 +99,6 @@ import com.xera.xclicker.ui.ImagePreviewPage
 import com.xera.xclicker.ui.ImagePreviewRoute
 import com.xera.xclicker.ui.SlowGroupPage
 import com.xera.xclicker.ui.SlowGroupRoute
-import com.xera.xclicker.ui.SnapshotPage
-import com.xera.xclicker.ui.SnapshotPageRoute
 import com.xera.xclicker.ui.SubsAppGroupListPage
 import com.xera.xclicker.ui.SubsAppGroupListRoute
 import com.xera.xclicker.ui.SubsAppListPage
@@ -270,7 +268,7 @@ class MainActivity : ComponentActivity() {
                             entry<AboutRoute> { AboutPage() }
                             entry<BlockA11yAppListRoute> { BlockA11yAppListPage() }
 
-                            entry<SnapshotPageRoute> { SnapshotPage() }
+
                             entry<AppOpsAllowRoute> { AppOpsAllowPage() }
                             entry<A11YScopeAppListRoute> { A11yScopeAppListPage() }
                             entry<ActivityLogRoute> { ActivityLogPage() }

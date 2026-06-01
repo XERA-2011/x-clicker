@@ -17,9 +17,7 @@ data class SettingsStore(
     val enableMatch: Boolean = true,
     val enableStatusService: Boolean = false,
     val excludeFromRecents: Boolean = false,
-    val captureScreenshot: Boolean = false,
-    val screenshotTargetAppId: String = "",
-    val screenshotEventSelector: String = "",
+
     val httpServerPort: Int = 8888,
     val updateSubsInterval: Long = UpdateTimeOption.Everyday.value,
     val captureVolumeChange: Boolean = false,

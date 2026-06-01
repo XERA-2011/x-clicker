@@ -444,7 +444,6 @@ class A11yRuleEngine(val service: A11yCommonImpl) {
             return A11yService.instance?.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK) == true
         }
 
-        suspend fun screenshot(): Bitmap? = service?.screenshot()
 
         suspend fun execAction(gkdAction: XClickerAction): ActionResult {
             val selector = Selector.parseOrNull(gkdAction.selector) ?: throw RpcError("非法选择器")

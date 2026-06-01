@@ -11,7 +11,6 @@ import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
-import com.xera.xclicker.util.SnapshotExt
 import com.xera.xclicker.util.format
 
 @Entity(
@@ -34,7 +33,6 @@ data class Snapshot(
 
     val date by lazy { id.format("MM-dd HH:mm:ss") }
 
-    val screenshotFile by lazy { SnapshotExt.screenshotFile(id) }
 
     @Dao
     interface SnapshotDao {
