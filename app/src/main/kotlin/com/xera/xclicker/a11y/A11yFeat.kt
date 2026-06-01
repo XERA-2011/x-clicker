@@ -108,7 +108,7 @@ private fun watchCaptureScreenshot() {
         if (it == null) return
     }
     appScope.launchTry {
-        SnapshotExt.captureSnapshot()
+        // captureSnapshot removed
     }
 }
 
@@ -144,7 +144,7 @@ private fun createVolumeReceiver() = object : BroadcastReceiver() {
             if (t - lastVolumeTriggerTime > 3000 && !ScreenUtils.isScreenLock()) {
                 lastVolumeTriggerTime = t
                 appScope.launchTry {
-                    SnapshotExt.captureSnapshot()
+                    // captureSnapshot removed
                 }
             }
         }
