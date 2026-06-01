@@ -149,8 +149,8 @@ private fun showSystemToast(message: CharSequence) {
 
 // 1.使用 WeakReference<View> 在某些机型上导致无法取消
 // 2.使用协程 delay + cacheView 也可能导致无法取消
-// https://github.com/xclicker-kit/gkd/issues/697
-// https://github.com/xclicker-kit/gkd/issues/698
+// https://github.com/gkd-kit/gkd/issues/697
+// https://github.com/gkd-kit/gkd/issues/698
 private fun showA11yToast(message: CharSequence) {
     val wm = A11yService.instance?.wm
         ?: if (canDrawOverlaysState.updateAndGet()) app.windowManager else null

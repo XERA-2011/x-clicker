@@ -7,6 +7,7 @@ import android.app.KeyguardManager
 import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Context
+import com.xera.xclicker.util.REPOSITORY_URL
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherApps
@@ -79,10 +80,10 @@ data class AppMeta(
     val appId: String = app.packageName!!,
     val appName: String = app.getString(R.string.app_name)
 ) {
-    val commitUrl = "https://github.com/xclicker-kit/gkd/".run {
+    val commitUrl = "${REPOSITORY_URL}/".run {
         plus(if (tagName != null) "tree/$tagName" else "commit/$commitId")
     }
-    val isXClickerChannel get() = channel == "gkd"
+    val isXClickerChannel get() = channel == "xclicker"
     val updateEnabled get() = isXClickerChannel
     val isBeta get() = versionName.contains("beta")
 }

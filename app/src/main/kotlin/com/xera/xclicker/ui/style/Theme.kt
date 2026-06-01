@@ -69,7 +69,7 @@ fun AppTheme(
     val activity = LocalActivity.current
     if (activity != null) {
         LaunchedEffect(darkTheme) {
-            // https://github.com/xclicker-kit/gkd/pull/421
+            // https://github.com/gkd-kit/gkd/pull/421
             WindowInsetsControllerCompat(activity.window, activity.window.decorView).apply {
                 isAppearanceLightStatusBars = !darkTheme
             }

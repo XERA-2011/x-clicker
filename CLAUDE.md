@@ -1,4 +1,4 @@
-# CLAUDE.md instructions for x-clicker
+# CLAUDE.md instructions for xClicker
 
 This project utilizes the **Superpowers** software development methodology and agentic skills framework to ensure high discipline, quality, planning, and TDD.
 

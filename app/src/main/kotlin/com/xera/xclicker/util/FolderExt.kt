@@ -21,7 +21,7 @@ fun File.autoMk(): File {
 }
 
 private val filesDir: File by lazy {
-    val markFile = app.filesDir.resolve(".gkd")
+    val markFile = app.filesDir.resolve(".xclicker")
     if (markFile.isFile) {
         app.filesDir
     } else {

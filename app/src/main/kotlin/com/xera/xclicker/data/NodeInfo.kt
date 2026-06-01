@@ -75,7 +75,7 @@ fun info2nodeList(root: AccessibilityNodeInfo?): List<NodeInfo> {
                 stack.add(children[children.size - i - 1])
             }
             if (times > MAX_KEEP_SIZE) {
-                // https://github.com/xclicker-kit/gkd/issues/28
+                // https://github.com/gkd-kit/gkd/issues/28
                 toast("节点数量至多保留$MAX_KEEP_SIZE,丢弃后续节点")
                 LogUtils.d(
                     "节点数量过多",

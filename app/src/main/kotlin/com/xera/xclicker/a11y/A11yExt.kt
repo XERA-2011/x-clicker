@@ -57,7 +57,7 @@ const val CONTENT_CHANGED = AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
 // 某些应用耗时 300ms
 private val AccessibilityEvent.safeSource: AccessibilityNodeInfo?
     get() = if (className == null) {
-        null // https://github.com/xclicker-kit/gkd/issues/426 event.clear 已被系统调用
+        null // https://github.com/gkd-kit/gkd/issues/426 event.clear 已被系统调用
     } else {
         try {
             source?.setGeneratedTime()
@@ -79,8 +79,8 @@ fun AccessibilityNodeInfo.getVid(): CharSequence? {
     return null
 }
 
-// https://github.com/xclicker-kit/gkd/issues/115
-// https://github.com/xclicker-kit/gkd/issues/650
+// https://github.com/gkd-kit/gkd/issues/115
+// https://github.com/gkd-kit/gkd/issues/650
 // 限制节点遍历的数量避免内存溢出
 const val MAX_CHILD_SIZE = 512
 const val MAX_DESCENDANTS_SIZE = 4096
@@ -94,7 +94,7 @@ fun AccessibilityNodeInfo.setGeneratedTime(): AccessibilityNodeInfo {
 fun AccessibilityNodeInfo.isExpired(expiryMillis: Long): Boolean {
     val generatedTime = extras.getLong(A11Y_NODE_TIME_KEY, -1)
     if (generatedTime == -1L) {
-        // https://github.com/xclicker-kit/gkd/issues/759
+        // https://github.com/gkd-kit/gkd/issues/759
         return true
     }
     return (System.currentTimeMillis() - generatedTime) > expiryMillis

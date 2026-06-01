@@ -118,7 +118,7 @@ fun drawTextToBitmap(text: String, bitmap: Bitmap) {
     }
 }
 
-// https://github.com/xclicker-kit/gkd/issues/924
+// https://github.com/gkd-kit/gkd/issues/924
 private val Drawable.safeDrawable: Drawable?
     get() = if (intrinsicHeight > 0 && intrinsicWidth > 0) {
         this

@@ -109,6 +109,6 @@ val snapshotNotif = Notif(
     title = "快照已保存",
     ongoing = false,
     autoCancel = true,
-    uri = "gkd://page/2",
+    uri = "xclicker://page/2",
 )
 

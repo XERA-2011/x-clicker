@@ -90,7 +90,7 @@ class A11yContext(
             parentCache.evictAll()
             indexCache.evictAll()
         } catch (_: Exception) {
-            // https://github.com/xclicker-kit/gkd/issues/664
+            // https://github.com/gkd-kit/gkd/issues/664
             // 在某些机型上 未知原因 缓存不一致 导致删除失败
             childCache = LruCache(MAX_CACHE_SIZE)
             indexCache = LruCache(MAX_CACHE_SIZE)
@@ -225,7 +225,7 @@ class A11yContext(
     /**
      * 在无缓存时, 此方法小概率造成无限节点片段,底层原因未知
      *
-     * https://github.com/xclicker-kit/gkd/issues/28
+     * https://github.com/gkd-kit/gkd/issues/28
      */
     private fun getCacheDepth(node: AccessibilityNodeInfo): Int {
         var p: AccessibilityNodeInfo = node

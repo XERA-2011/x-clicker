@@ -90,8 +90,8 @@ private fun checkAllowedOp(op: String): Boolean = app.appOpsManager.checkOpNoThr
     it != AppOpsManager.MODE_IGNORED && it != AppOpsManager.MODE_ERRORED
 }
 
-// https://github.com/xclicker-kit/gkd/issues/954
-// https://github.com/xclicker-kit/gkd/issues/887
+// https://github.com/gkd-kit/gkd/issues/954
+// https://github.com/gkd-kit/gkd/issues/887
 val foregroundServiceSpecialUseState by lazy {
     PermissionState(
         name = "特殊用途的前台服务",

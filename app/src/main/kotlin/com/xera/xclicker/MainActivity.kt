@@ -303,21 +303,17 @@ class MainActivity : ComponentActivity() {
                                     slideOutHorizontally(targetOffsetX = { it })
                         },
                     )
-                    if (!mainVm.termsAcceptedFlow.collectAsState().value) {
-                        TermsAcceptDialog()
-                    } else {
-                        AccessRestrictedSettingsDlg()
-                        AuthDialog(mainVm.authReasonFlow)
-                        BuildDialog(mainVm.dialogFlow)
-                        mainVm.uploadOptions.ShowDialog()
-                        EditGithubCookieDlg()
-                        mainVm.updateStatus?.UpgradeDialog()
-                        SubsSheet(mainVm, mainVm.sheetSubsIdFlow)
-                        mainVm.inputSubsLinkOption.ContentDialog()
-                        mainVm.ruleGroupState.Render()
-                        TextDialog(mainVm.textFlow)
-                        ShareLogDlg(mainVm.showShareLogDlgFlow)
-                    }
+                    AccessRestrictedSettingsDlg()
+                    AuthDialog(mainVm.authReasonFlow)
+                    BuildDialog(mainVm.dialogFlow)
+                    mainVm.uploadOptions.ShowDialog()
+                    EditGithubCookieDlg()
+                    mainVm.updateStatus?.UpgradeDialog()
+                    SubsSheet(mainVm, mainVm.sheetSubsIdFlow)
+                    mainVm.inputSubsLinkOption.ContentDialog()
+                    mainVm.ruleGroupState.Render()
+                    TextDialog(mainVm.textFlow)
+                    ShareLogDlg(mainVm.showShareLogDlgFlow)
                 }
             }
             LaunchedEffect(null) {

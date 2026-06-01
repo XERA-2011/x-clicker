@@ -96,54 +96,6 @@ fun AboutPage() {
     val context = LocalActivity.current as MainActivity
     val mainVm = LocalMainViewModel.current
     val vm = viewModel<AboutVm>()
-    val store by storeFlow.collectAsState()
-
-    var showInfoDlg by vm.showInfoDlgFlow.asMutableState()
-    if (showInfoDlg) {
-        AlertDialog(
-            onDismissRequest = { showInfoDlg = false },
-            title = { Text(text = "版本信息") },
-            text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Column {
-                        Text(text = "构建渠道")
-                        Text(text = META.channel)
-                    }
-                    Column {
-                        Text(text = "版本代码")
-                        Text(text = META.versionCode.toString())
-                    }
-                    Column {
-                        Text(text = "版本名称")
-                        Text(text = META.versionName)
-                    }
-                    Column {
-                        Text(text = "代码记录")
-                        Text(
-                            modifier = Modifier.clickable { openUri(META.commitUrl) },
-                            text = META.tagName ?: META.commitId.substring(0, 16),
-                            color = MaterialTheme.colorScheme.primary,
-                            style = LocalTextStyle.current.copy(textDecoration = TextDecoration.Underline),
-                        )
-                    }
-                    Column {
-                        Text(text = "提交时间")
-                        Text(text = META.commitTime.format("yyyy-MM-dd HH:mm:ss ZZ"))
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showInfoDlg = false
-                }) {
-                    Text(text = "关闭")
-                }
-            },
-        )
-    }
-    var showShareAppDlg by vm.showShareAppDlgFlow.asMutableState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -158,15 +110,7 @@ fun AboutPage() {
                         },
                     )
                 },
-                title = { Text(text = "关于") },
-                actions = {
-                    PerfIconButton(
-                        imageVector = PerfIcon.Share,
-                        onClick = {
-                            showShareAppDlg = true
-                        },
-                    )
-                }
+                title = { Text(text = "关于") }
             )
         }
     ) { contentPadding ->
@@ -182,24 +126,18 @@ fun AboutPage() {
             ) {
                 AnimatedLogoIcon(
                     modifier = Modifier
-                        .clickable(
-                            indication = null,
-                            interactionSource = remember { MutableInteractionSource() },
-                            onClick = throttle { toast("你干嘛~ 哎呦~") }
-                        )
                         .fillMaxWidth(0.33f)
                         .aspectRatio(1f)
                 )
                 Column(
                     modifier = Modifier
                         .clip(MaterialTheme.shapes.extraSmall)
-                        .clickable(onClick = { showInfoDlg = true })
                         .padding(horizontal = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(text = META.appName, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        text = META.versionName,
+                        text = "v" + META.versionName,
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
@@ -209,108 +147,14 @@ fun AboutPage() {
             SettingItem(
                 imageVector = null,
                 title = "开源代码",
+                subtitle = REPOSITORY_URL,
                 onClick = {
-                    mainVm.openUrl(REPOSITORY_URL)
+                    com.xera.xclicker.util.copyText(REPOSITORY_URL)
+                    toast("开源地址已复制到剪贴板")
                 },
             )
-
-            if (mainVm.updateStatus != null) {
-                Text(
-                    text = "更新",
-                    modifier = Modifier.titleItemPadding(),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                TextMenu(
-                    title = "更新渠道",
-                    option = UpdateChannelOption.objects.findOption(store.updateChannel)
-                ) {
-                    if (mainVm.updateStatus.checkUpdatingFlow.value) return@TextMenu
-                    if (it.value == UpdateChannelOption.Beta.value) {
-                        mainVm.viewModelScope.launchTry {
-                            mainVm.dialogFlow.waitResult(
-                                title = "版本渠道",
-                                text = "测试版本渠道更新快\n但不稳定可能存在较多BUG\n请谨慎使用",
-                            )
-                            storeFlow.update { s -> s.copy(updateChannel = it.value) }
-                        }
-                    } else {
-                        storeFlow.update { s -> s.copy(updateChannel = it.value) }
-                    }
-                }
-                Row(
-                    modifier = Modifier
-                        .clickable(
-                            onClick = throttle {
-                                mainVm.updateStatus.checkUpdate(true)
-                            }
-                        )
-                        .fillMaxWidth()
-                        .itemPadding(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = "检查更新",
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    RotatingLoadingIcon(loading = mainVm.updateStatus.checkUpdatingFlow.collectAsState().value)
-                }
-            }
             Spacer(modifier = Modifier.height(EmptyHeight))
         }
-    }
-
-    if (showShareAppDlg) {
-        TextListDialog(
-            onDismiss = { showShareAppDlg = false },
-            textList = listOf(
-                "分享到其他应用" to mainVm.viewModelScope.launchAsFn(Dispatchers.IO) {
-                    if (!META.isXClickerChannel) {
-                        mainVm.dialogFlow.waitResult(
-                            title = "分享提示",
-                            textContent = { Text(text = exportPlayTipTemplate()) },
-                            confirmText = "继续",
-                        )
-                    }
-                    context.shareFile(getShareApkFile(), "分享安装文件")
-                },
-                "保存到下载" to mainVm.viewModelScope.launchAsFn(Dispatchers.IO) {
-                    if (!META.isXClickerChannel) {
-                        mainVm.dialogFlow.waitResult(
-                            title = "保存提示",
-                            textContent = { Text(text = exportPlayTipTemplate()) },
-                            confirmText = "继续",
-                        )
-                    }
-                    context.saveFileToDownloads(getShareApkFile())
-                },
-                "Google Play" to {
-                    mainVm.openUrl(PLAY_STORE_URL)
-                },
-            )
-        )
-    }
-}
-
-@Composable
-private fun exportPlayTipTemplate(): AnnotatedString {
-    return buildAnnotatedString {
-        append("当前导出的 APK 文件只能在已安装 Google 框架的设备上才能使用，否则安装打开后会提示报错，")
-        withLink(
-            LinkAnnotation.Url(
-                ShortUrlSet.URL13,
-                TextLinkStyles(
-                    style = SpanStyle(
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                )
-            )
-        ) {
-            append("建议点此从官网下载")
-        }
-        append("，或点击下方继续操作")
     }
 }
 
@@ -318,24 +162,10 @@ private fun exportPlayTipTemplate(): AnnotatedString {
 private fun AnimatedLogoIcon(
     modifier: Modifier = Modifier
 ) {
-    val darkTheme = LocalDarkTheme.current
-    val colorRid = if (darkTheme) R.color.better_white else R.color.better_black
-    var atEnd by remember { mutableStateOf(false) }
-    val animation = AnimatedImageVector.animatedVectorResource(id = R.drawable.ic_anim_logo)
-    val painter = rememberAnimatedVectorPainter(
-        animation,
-        atEnd
-    )
-    LaunchedEffect(Unit) {
-        while (isActive) {
-            atEnd = !atEnd
-            delay(animation.totalDuration.toLong())
-        }
-    }
     Icon(
         modifier = modifier,
-        painter = painter,
+        painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_launcher_foreground),
         contentDescription = null,
-        tint = colorResource(colorRid),
+        tint = MaterialTheme.colorScheme.onSurface,
     )
 }

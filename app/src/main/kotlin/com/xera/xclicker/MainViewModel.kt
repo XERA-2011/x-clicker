@@ -245,28 +245,12 @@ class MainViewModel : BaseViewModel(), OnSimpleLife by DefaultSimpleLifeImpl() {
         LogUtils.d(intent)
         val uri = intent.data?.normalizeScheme()
         val source = intent.getStringExtra(activityNavSourceName)
-        if (uri?.scheme == "gkd") {
+        if (uri?.scheme == "xclicker") {
             handleXClickerUri(uri)
         }
     }
 
-    val termsAcceptedFlow by lazy {
-        if (tempTermsAccepted) {
-            MutableStateFlow(true)
-        } else {
-            createTextFlow(
-                key = "terms_accepted",
-                decode = { it == "true" },
-                encode = {
-                    tempTermsAccepted = it
-                    it.toString()
-                },
-                scope = viewModelScope,
-            ).apply {
-                tempTermsAccepted = value
-            }
-        }
-    }
+    val termsAcceptedFlow = MutableStateFlow(true)
 
     val githubCookieFlow by lazy {
         createTextFlow(

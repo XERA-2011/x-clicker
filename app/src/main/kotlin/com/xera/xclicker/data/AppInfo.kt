@@ -71,7 +71,7 @@ private fun PackageInfo.getEnabled(userId: Int): Boolean {
     val enabled = applicationInfo?.enabled ?: true
     if (enabled) return true
     val state = try {
-        // https://github.com/xclicker-kit/gkd/issues/1169#issuecomment-3489260246
+        // https://github.com/gkd-kit/gkd/issues/1169#issuecomment-3489260246
         if (userId == currentUserId) {
             app.packageManager.getApplicationEnabledSetting(packageName)
         } else {

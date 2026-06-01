@@ -146,7 +146,7 @@ fun WebViewPage(route: WebViewRoute) {
             client = webViewClient,
             onCreated = {
                 webView.value = it
-                it.addJavascriptInterface(XClickerWebViewJsApi, "gkd")
+                it.addJavascriptInterface(XClickerWebViewJsApi, "xclicker")
                 it.settings.apply {
                     @SuppressLint("SetJavaScriptEnabled")
                     javaScriptEnabled = true
@@ -214,8 +214,8 @@ private class XClickerWebViewClient() : AccompanistWebViewClient() {
 
     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
         val uri = request?.url
-        if (uri != null && uri.host != "gkd.li") {
-            if (uri.scheme == "gkd") {
+        if (uri != null && uri.host != "xclicker.local") {
+            if (uri.scheme == "xclicker") {
                 (view?.context as? MainActivity)?.mainVm?.handleXClickerUri(uri)
             } else {
                 openUri(uri)
@@ -230,7 +230,7 @@ private class XClickerWebViewClient() : AccompanistWebViewClient() {
         request: WebResourceRequest?
     ): WebResourceResponse? {
         try {
-            if (request != null && request.run { isForMainFrame && url.host == "gkd.li" && method == "GET" }) {
+            if (request != null && request.run { isForMainFrame && url.host == "xclicker.local" && method == "GET" }) {
                 LogUtils.d(request.method, request.url)
                 runBlocking(Dispatchers.IO) {
                     val docConfig = client.get(DOC_CONFIG_URL).body<DocConfig>()
