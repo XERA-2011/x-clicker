@@ -158,7 +158,7 @@ private fun updatePartAppInfo(
 
 val appListAuthAbnormalFlow = MutableStateFlow(false)
 
-fun updateAllAppInfo(): Unit = updateAppMutex.launchTry(appScope, Dispatchers.IO) {
+fun updateAllAppInfo(showToast: Boolean = true): Unit = updateAppMutex.launchTry(appScope, Dispatchers.IO) {
     val newAppMap = HashMap<String, AppInfo>()
     val newIconMap = HashMap<String, Drawable>()
     // see #1169 DeadObjectException BadParcelableException
@@ -206,14 +206,14 @@ fun updateAllAppInfo(): Unit = updateAppMutex.launchTry(appScope, Dispatchers.IO
     updateOtherUserAppInfo(newAppMap)
     userAppInfoMapFlow.value = newAppMap
     userAppIconMapFlow.value = newIconMap
-    if (!app.justStarted) {
+    if (showToast && !app.justStarted) {
         toast("应用列表更新成功")
     }
     if (canQueryPkgState.value && mayAuthDenied && app.justStarted) {
         // 概率出现：即使有「读取应用列表权限」在刚启动时也只能获取到少量应用，延迟几秒再试一次
         appScope.launch {
             delay(App.START_WAIT_TIME)
-            updateAllAppInfo()
+            updateAllAppInfo(showToast = false)
         }
     }
 }

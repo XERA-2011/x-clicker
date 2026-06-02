@@ -35,7 +35,6 @@ import com.xera.xclicker.ui.component.AlertDialogOptions
 import com.xera.xclicker.ui.component.InputSubsLinkOption
 import com.xera.xclicker.ui.component.RuleGroupState
 import com.xera.xclicker.ui.component.UploadOptions
-import com.xera.xclicker.ui.home.BottomNavItem
 import com.xera.xclicker.ui.home.HomeRoute
 import com.xera.xclicker.ui.share.BaseViewModel
 import com.xera.xclicker.util.AutomatorModeOption
@@ -203,18 +202,7 @@ class MainViewModel : BaseViewModel(), OnSimpleLife by DefaultSimpleLifeImpl() {
         }
     }
 
-    val tabFlow = MutableStateFlow(BottomNavItem.Control.key)
-    val resetPageScrollEvent = MutableSharedFlow<BottomNavItem>()
-    private var lastClickTabTime = 0L
-    fun handleClickTab(navItem: BottomNavItem) {
-        val t = System.currentTimeMillis()
-        // double click
-        if (navItem.key == tabFlow.value && t - lastClickTabTime < 500) {
-            viewModelScope.launch { resetPageScrollEvent.emit(navItem) }
-        }
-        tabFlow.value = navItem.key
-        lastClickTabTime = t
-    }
+
 
     fun handleXClickerUri(uri: Uri) {
         val notFoundToast = { toast("未知URI\n${uri}") }
@@ -222,9 +210,6 @@ class MainViewModel : BaseViewModel(), OnSimpleLife by DefaultSimpleLifeImpl() {
             "page" -> when (uri.path) {
                 "" -> {
                     val tab = uri.getQueryParameter("tab")?.toIntOrNull()
-                    if (tab != null && BottomNavItem.allSubObjects.any { it.key == tab }) {
-                        tabFlow.value = tab
-                    }
                 }
 
 

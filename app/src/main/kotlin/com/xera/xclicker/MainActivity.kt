@@ -121,7 +121,7 @@ import com.xera.xclicker.ui.component.ShareLogDlg
 import com.xera.xclicker.ui.component.SubsSheet
 import com.xera.xclicker.ui.component.TermsAcceptDialog
 import com.xera.xclicker.ui.component.TextDialog
-import com.xera.xclicker.ui.home.HomePage
+import com.xera.xclicker.ui.home.ControlPage
 import com.xera.xclicker.ui.home.HomeRoute
 import com.xera.xclicker.ui.share.FixedWindowInsets
 import com.xera.xclicker.ui.share.LocalMainViewModel
@@ -263,7 +263,7 @@ class MainActivity : ComponentActivity() {
                         backStack = mainVm.backStack,
                         onBack = mainVm::popPage,
                         entryProvider = entryProvider {
-                            entry<HomeRoute> { HomePage() }
+                            entry<HomeRoute> { ControlPage() }
                             entry<AuthA11yRoute> { AuthA11yPage() }
                             entry<AboutRoute> { AboutPage() }
                             entry<BlockA11yAppListRoute> { BlockA11yAppListPage() }
@@ -271,6 +271,9 @@ class MainActivity : ComponentActivity() {
 
                             entry<AppOpsAllowRoute> { AppOpsAllowPage() }
                             entry<A11YScopeAppListRoute> { A11yScopeAppListPage() }
+                            entry<com.xera.xclicker.ui.home.AppListRoute> { com.xera.xclicker.ui.home.AppListPage() }
+                            entry<com.xera.xclicker.ui.home.SubsManageRoute> { com.xera.xclicker.ui.home.SubsManagePage() }
+                            entry<com.xera.xclicker.ui.home.SettingsRoute> { com.xera.xclicker.ui.home.SettingsPage() }
                             entry<ActivityLogRoute> { ActivityLogPage() }
                             entry<A11yEventLogRoute> { A11yEventLogPage() }
                             entry<EditBlockAppListRoute> { EditBlockAppListPage() }

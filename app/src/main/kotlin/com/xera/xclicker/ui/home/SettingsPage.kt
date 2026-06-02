@@ -96,8 +96,14 @@ import com.xera.xclicker.util.shareFile
 import com.xera.xclicker.util.throttle
 import com.xera.xclicker.util.toast
 
+import androidx.navigation3.runtime.NavKey
+import kotlinx.serialization.Serializable
+
+@Serializable
+data object SettingsRoute : NavKey
+
 @Composable
-fun useSettingsPage(): ScaffoldExt {
+fun SettingsPage() {
     val mainVm = LocalMainViewModel.current
     val context = LocalActivity.current as MainActivity
     val store by storeFlow.collectAsState()
@@ -298,22 +304,21 @@ fun useSettingsPage(): ScaffoldExt {
 
     val scrollKey = rememberSaveable { mutableIntStateOf(0) }
     val (scrollBehavior, scrollState) = useScrollBehaviorState(scrollKey)
-    LaunchedEffect(null) {
-        mainVm.resetPageScrollEvent.collect {
-            if (it == BottomNavItem.Settings) {
-                scrollKey.intValue++
-            }
-        }
-    }
-    return ScaffoldExt(
-        navItem = BottomNavItem.Settings,
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection).fillMaxSize(),
         topBar = {
             PerfTopAppBar(
                 scrollBehavior = scrollBehavior,
+                navigationIcon = {
+                    PerfIconButton(
+                        imageVector = PerfIcon.ArrowBack,
+                        contentDescription = "返回",
+                        onClick = { mainVm.popPage() }
+                    )
+                },
                 title = {
                     Text(
-                        text = BottomNavItem.Settings.label,
+                        text = "设置",
                     )
                 },
             )
@@ -331,6 +336,15 @@ fun useSettingsPage(): ScaffoldExt {
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
             )
+
+            SettingItem(title = "订阅管理", onClick = {
+                mainVm.navigatePage(SubsManageRoute)
+            })
+
+            SettingItem(title = "应用管理", onClick = {
+                mainVm.navigatePage(AppListRoute)
+            })
+
             val showToastSettingsDlg by vm.showToastSettingsDlgFlow.asMutableState()
             TextSwitch(
                 title = "触发提示",

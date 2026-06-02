@@ -4,12 +4,16 @@ import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -25,16 +29,21 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Dispatchers
@@ -71,39 +80,25 @@ import com.xera.xclicker.util.latestRecordFlow
 import com.xera.xclicker.util.launchAsFn
 import com.xera.xclicker.util.throttle
 
+import androidx.navigation3.runtime.NavKey
+import kotlinx.serialization.Serializable
+import androidx.compose.material3.Scaffold
+
+@Serializable
+data object HomeRoute : NavKey
+
 @Composable
-fun useControlPage(): ScaffoldExt {
+fun ControlPage() {
     val context = LocalActivity.current as MainActivity
     val mainVm = LocalMainViewModel.current
     val vm = viewModel<HomeVm>()
     val scrollKey = rememberSaveable { mutableIntStateOf(0) }
     val (scrollBehavior, scrollState) = useScrollBehaviorState(scrollKey)
-    LaunchedEffect(null) {
-        mainVm.resetPageScrollEvent.collect {
-            if (it == BottomNavItem.Control) {
-                scrollKey.intValue++
-            }
-        }
-    }
-    return ScaffoldExt(
-        navItem = BottomNavItem.Control,
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-            PerfTopAppBar(scrollBehavior = scrollBehavior, title = {
-                Text(
-                    text = stringResource(R.string.app_name)
-                )
-            }, actions = {
-                PerfIconButton(
-                    imageVector = PerfIcon.RocketLaunch,
-                    onClickLabel = "前往工作模式页面",
-                    contentDescription = "工作模式",
-                    onClick = throttle {
-                        mainVm.navigatePage(AuthA11yRoute)
-                    },
-                )
-            })
-        }) { contentPadding ->
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection).fillMaxSize(),
+        topBar = {},
+        bottomBar = {},
+    ) { contentPadding ->
         val store by storeFlow.collectAsState()
 
         val a11yRunning by A11yService.isRunning.collectAsState()
@@ -111,10 +106,12 @@ fun useControlPage(): ScaffoldExt {
 
         Column(
             modifier = Modifier
+                .fillMaxSize()
                 .verticalScroll(scrollState)
                 .padding(contentPadding)
                 .padding(horizontal = itemHorizontalPadding),
-            verticalArrangement = Arrangement.spacedBy(itemHorizontalPadding / 2)
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (appOpsRestrictedFlow.collectAsState().value) {
                 Card(
@@ -145,38 +142,86 @@ fun useControlPage(): ScaffoldExt {
                         PerfIcon(imageVector = PerfIcon.KeyboardArrowRight)
                     }
                 }
+                Spacer(modifier = Modifier.height(32.dp))
             }
-            PageSwitchItemCard(
-                imageVector = PerfIcon.Memory,
-                title = "服务状态",
-                subtitle = if (a11yRunning) {
-                    "无障碍正在运行"
-                } else if (mainVm.a11yServiceEnabledFlow.collectAsState().value) {
-                    "无障碍发生故障"
-                } else if (writeSecureSettings) {
-                    "无障碍已关闭"
-                } else {
-                    "无障碍未授权"
-                },
-                checked = a11yRunning,
-                onCheckedChange = { newEnabled ->
-                    if (newEnabled) {
-                        if (!writeSecureSettingsState.value) {
-                            mainVm.navigatePage(AuthA11yRoute)
-                        } else {
-                            com.xera.xclicker.a11y.setA11yServiceEnabled(true)
-                        }
+            
+            val isRunning = a11yRunning
+            val onCheckedChange: (Boolean) -> Unit = { newEnabled ->
+                if (newEnabled) {
+                    if (!writeSecureSettingsState.value) {
+                        mainVm.navigatePage(AuthA11yRoute)
                     } else {
-                        if (writeSecureSettingsState.value) {
-                            com.xera.xclicker.a11y.setA11yServiceEnabled(false)
-                        } else {
-                            com.xera.xclicker.service.A11yService.instance?.disableSelf()
-                        }
+                        com.xera.xclicker.a11y.setA11yServiceEnabled(true)
                     }
-                },
+                } else {
+                    if (writeSecureSettingsState.value) {
+                        com.xera.xclicker.a11y.setA11yServiceEnabled(false)
+                    } else {
+                        com.xera.xclicker.service.A11yService.instance?.disableSelf()
+                    }
+                }
+            }
+
+            // Title
+            Text(
+                text = "无障碍模式",
+                style = MaterialTheme.typography.headlineLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(bottom = 12.dp)
             )
 
+            // Status Text
+            Text(
+                text = if (isRunning) "当前状态：已开启" else "当前状态：已关闭",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
+                color = if (isRunning) Color(0xFF4CAF50) else Color(0xFF999999),
+                modifier = Modifier.padding(bottom = 48.dp)
+            )
 
+            // Custom Switch (HTML styled)
+            val thumbOffset by androidx.compose.animation.core.animateDpAsState(
+                targetValue = if (isRunning) 50.dp else 0.dp,
+                animationSpec = androidx.compose.animation.core.tween(durationMillis = 350)
+            )
+            val trackColor by androidx.compose.animation.animateColorAsState(
+                targetValue = if (isRunning) Color(0xFF4CAF50) else Color(0xFF333333),
+                animationSpec = androidx.compose.animation.core.tween(durationMillis = 350)
+            )
+
+            Box(
+                modifier = Modifier
+                    .size(width = 110.dp, height = 60.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(trackColor)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { onCheckedChange(!isRunning) }
+            ) {
+                Box(
+                    modifier = Modifier
+                        .padding(6.dp)
+                        .offset(x = thumbOffset)
+                        .size(48.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(Color.White)
+                        .shadow(8.dp, androidx.compose.foundation.shape.CircleShape, ambientColor = Color.Black.copy(alpha = 0.15f), spotColor = Color.Black.copy(alpha = 0.15f))
+                )
+            }
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            androidx.compose.material3.IconButton(
+                onClick = throttle { mainVm.navigatePage(SettingsRoute) },
+                modifier = Modifier.size(60.dp)
+            ) {
+                androidx.compose.material3.Icon(
+                    imageVector = PerfIcon.Settings,
+                    contentDescription = "设置",
+                    modifier = Modifier.size(40.dp),
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
 
             Spacer(modifier = Modifier.height(EmptyHeight))
         }

@@ -34,8 +34,53 @@ import com.xera.xclicker.ui.share.LocalDarkTheme
 import com.xera.xclicker.ui.share.LocalIsTalkbackEnabled
 import com.xera.xclicker.util.AndroidTarget
 
-private val LightColorScheme = lightColorScheme()
-private val DarkColorScheme = darkColorScheme()
+private val LightColorScheme = lightColorScheme(
+    primary = Color(0xFF000000),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFE0E0E0),
+    onPrimaryContainer = Color(0xFF000000),
+    secondary = Color(0xFF555555),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFEEEEEE),
+    onSecondaryContainer = Color(0xFF000000),
+    background = Color(0xFFFFFFFF),
+    onBackground = Color(0xFF000000),
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF000000),
+    surfaceVariant = Color(0xFFF5F5F5),
+    onSurfaceVariant = Color(0xFF333333),
+    outline = Color(0xFFBDBDBD),
+    surfaceTint = Color(0xFF000000),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF6F6F6),
+    surfaceContainer = Color(0xFFF0F0F0),
+    surfaceContainerHigh = Color(0xFFEBEBEB),
+    surfaceContainerHighest = Color(0xFFE6E6E6)
+)
+
+private val DarkColorScheme = darkColorScheme(
+    primary = Color(0xFFFFFFFF),
+    onPrimary = Color(0xFF000000),
+    primaryContainer = Color(0xFF333333),
+    onPrimaryContainer = Color(0xFFFFFFFF),
+    secondary = Color(0xFFAAAAAA),
+    onSecondary = Color(0xFF000000),
+    secondaryContainer = Color(0xFF222222),
+    onSecondaryContainer = Color(0xFFFFFFFF),
+    background = Color(0xFF121212),
+    onBackground = Color(0xFFFFFFFF),
+    surface = Color(0xFF121212),
+    onSurface = Color(0xFFFFFFFF),
+    surfaceVariant = Color(0xFF1E1E1E),
+    onSurfaceVariant = Color(0xFFCCCCCC),
+    outline = Color(0xFF555555),
+    surfaceTint = Color(0xFFFFFFFF),
+    surfaceContainerLowest = Color(0xFF0F0F0F),
+    surfaceContainerLow = Color(0xFF161616),
+    surfaceContainer = Color(0xFF1C1C1C),
+    surfaceContainerHigh = Color(0xFF262626),
+    surfaceContainerHighest = Color(0xFF333333)
+)
 
 @Composable
 fun AppTheme(
@@ -60,8 +105,8 @@ fun AppTheme(
         if (invertedTheme) !it else it
     }
     val colorScheme = when {
-        AndroidTarget.S && enableDynamicColor && darkTheme -> dynamicDarkColorScheme(app)
-        AndroidTarget.S && enableDynamicColor && !darkTheme -> dynamicLightColorScheme(app)
+        // AndroidTarget.S && enableDynamicColor && darkTheme -> dynamicDarkColorScheme(app)
+        // AndroidTarget.S && enableDynamicColor && !darkTheme -> dynamicLightColorScheme(app)
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }

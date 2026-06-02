@@ -26,7 +26,7 @@ data class SettingsStore(
     val autoClearMemorySubs: Boolean = false,
     val hideSnapshotStatusBar: Boolean = false,
     val enableDarkTheme: Boolean? = null,
-    val enableDynamicColor: Boolean = true,
+    val enableDynamicColor: Boolean = false,
     val showSaveSnapshotToast: Boolean = true,
     val useSystemToast: Boolean = false,
     val useCustomNotifText: Boolean = false,

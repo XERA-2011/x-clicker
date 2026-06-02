@@ -86,8 +86,15 @@ import com.xera.xclicker.util.usedSubsEntriesFlow
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
+import androidx.navigation3.runtime.NavKey
+import kotlinx.serialization.Serializable
+import androidx.compose.material3.Scaffold
+
+@Serializable
+data object SubsManageRoute : NavKey
+
 @Composable
-fun useSubsManagePage(): ScaffoldExt {
+fun SubsManagePage() {
     val mainVm = LocalMainViewModel.current
 
     val vm = viewModel<HomeVm>()
@@ -147,16 +154,8 @@ fun useSubsManagePage(): ScaffoldExt {
 
     val scrollKey = rememberSaveable { mutableIntStateOf(0) }
     val (scrollBehavior, lazyListState) = usePinnedScrollBehaviorState(scrollKey)
-    LaunchedEffect(null) {
-        mainVm.resetPageScrollEvent.collect {
-            if (it == BottomNavItem.SubsManage) {
-                scrollKey.intValue++
-            }
-        }
-    }
-    return ScaffoldExt(
-        navItem = BottomNavItem.SubsManage,
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection).fillMaxSize(),
         topBar = {
             PerfTopAppBar(scrollBehavior = scrollBehavior, navigationIcon = {
                 if (isSelectedMode) {
@@ -164,6 +163,12 @@ fun useSubsManagePage(): ScaffoldExt {
                         imageVector = PerfIcon.Close,
                         contentDescription = "取消选择",
                         onClick = { isSelectedMode = false },
+                    )
+                } else {
+                    PerfIconButton(
+                        imageVector = PerfIcon.ArrowBack,
+                        contentDescription = "返回",
+                        onClick = { mainVm.popPage() }
                     )
                 }
             }, title = {
@@ -173,7 +178,7 @@ fun useSubsManagePage(): ScaffoldExt {
                     )
                 } else {
                     Text(
-                        text = BottomNavItem.SubsManage.label,
+                        text = "订阅管理",
                     )
                 }
             }, actions = {

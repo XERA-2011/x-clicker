@@ -88,8 +88,15 @@ import com.xera.xclicker.util.throttle
 import com.xera.xclicker.util.updateAllAppInfo
 import com.xera.xclicker.util.updateAppMutex
 
+import androidx.navigation3.runtime.NavKey
+import kotlinx.serialization.Serializable
+import androidx.compose.material3.Scaffold
+
+@Serializable
+data object AppListRoute : NavKey
+
 @Composable
-fun useAppListPage(): ScaffoldExt {
+fun AppListPage() {
     val mainVm = LocalMainViewModel.current
     val context = LocalActivity.current as MainActivity
 
@@ -120,15 +127,9 @@ fun useAppListPage(): ScaffoldExt {
                 }
             }
         }
-        mainVm.resetPageScrollEvent.collect {
-            if (it == BottomNavItem.AppList) {
-                scrollKey.intValue++
-            }
-        }
     }
-    return ScaffoldExt(
-        navItem = BottomNavItem.AppList,
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection).fillMaxSize(),
         topBar = {
             DisposableEffect(null) {
                 onDispose {
@@ -138,7 +139,16 @@ fun useAppListPage(): ScaffoldExt {
                     vm.editWhiteListModeFlow.value = false
                 }
             }
-            PerfTopAppBar(scrollBehavior = scrollBehavior, title = {
+            PerfTopAppBar(
+                scrollBehavior = scrollBehavior, 
+                navigationIcon = {
+                    PerfIconButton(
+                        imageVector = PerfIcon.ArrowBack,
+                        contentDescription = "返回",
+                        onClick = throttle { mainVm.popPage() }
+                    )
+                },
+                title = {
                 val firstShowSearchBar = remember { showSearchBar }
                 if (showSearchBar) {
                     BackHandler {
@@ -176,7 +186,7 @@ fun useAppListPage(): ScaffoldExt {
                         } else {
                             Text(
                                 modifier = titleModifier,
-                                text = BottomNavItem.AppList.label,
+                                text = "应用管理",
                             )
                         }
                     }
