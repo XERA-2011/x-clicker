@@ -1,7 +1,7 @@
 # xClicker
 
 [![Build-Apk](https://github.com/XERA-2011/x-clicker/actions/workflows/Build-Apk.yml/badge.svg)](https://github.com/XERA-2011/x-clicker/actions/workflows/Build-Apk.yml)
-[![Sponsor](https://img.shields.io/badge/Sponsor-❤️-ff69b4.svg)](SPONSOR.md)
+[![Sponsor](https://img.shields.io/badge/Sponsor-❤️-ff69b4.svg)](https://github.com/XERA-2011/sponsor)
 
 xClicker 是一款基于 Jetpack Compose + MVVM 架构的 Android 现代无障碍（Accessibility）自动化应用框架模板。
 
@@ -9,7 +9,7 @@ xClicker 是一款基于 Jetpack Compose + MVVM 架构的 Android 现代无障�
 
 ## ❤️ 赞助与支持
 
-如果您觉得本项目对您的学习或工作有帮助，欢迎 [点击这里赞助支持](SPONSOR.md)，感谢您的鼓励！
+如果您觉得本项目对您的学习或工作有帮助，欢迎 [点击这里赞助支持](https://github.com/XERA-2011/sponsor)，感谢您的鼓励！
 
 
 ## ⚠️ 免责与合规声明（重要）
