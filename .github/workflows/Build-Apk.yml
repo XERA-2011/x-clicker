@@ -1,0 +1,49 @@
+name: Build-Apk
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - '**'
+    paths-ignore:
+      - 'LICENSE'
+      - '*.md'
+      - '.github/**'
+
+jobs:
+  build:
+    if: ${{ !startsWith(github.event.head_commit.message, 'chore:') && !startsWith(github.event.head_commit.message, 'chore(') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-encryption-key: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
+
+      - name: write xclicker secrets info
+        run: |
+          echo ${{ secrets.XCLICKER_STORE_FILE_BASE64 }} | base64 --decode > ${{ github.workspace }}/xclicker.jks
+          echo XCLICKER_STORE_FILE='${{ github.workspace }}/xclicker.jks' >> gradle.properties
+          echo XCLICKER_STORE_PASSWORD='${{ secrets.XCLICKER_STORE_PASSWORD }}' >> gradle.properties
+          echo XCLICKER_KEY_ALIAS='${{ secrets.XCLICKER_KEY_ALIAS }}' >> gradle.properties
+          echo XCLICKER_KEY_PASSWORD='${{ secrets.XCLICKER_KEY_PASSWORD }}' >> gradle.properties
+
+      - run: chmod 777 ./gradlew
+      - run: ./gradlew app:assembleXclickerRelease
+
+      - uses: actions/upload-artifact@v7
+        with:
+          archive: false
+          path: app/build/outputs/apk/xclicker/release/*.apk
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: outputs
+          path: app/build/outputs
