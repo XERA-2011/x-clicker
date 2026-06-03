@@ -112,7 +112,10 @@ private fun registerPackageListener() {
             p2: Boolean
         ) = Unit
     }
-    app.launcherApps.registerCallback(packageCallback)
+    app.launcherApps.registerCallback(
+        packageCallback,
+        android.os.Handler(android.os.Looper.getMainLooper())
+    )
 }
 
 const val PKG_FLAGS = PackageManager.MATCH_UNINSTALLED_PACKAGES
