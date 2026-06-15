@@ -24,7 +24,7 @@ data class SubsItem(
 
     @ColumnInfo(name = "ctime") val ctime: Long = System.currentTimeMillis(),
     @ColumnInfo(name = "mtime") val mtime: Long = System.currentTimeMillis(),
-    @ColumnInfo(name = "enable") val enable: Boolean = false,
+    @ColumnInfo(name = "enable") val enable: Boolean = true,
     @ColumnInfo(name = "enable_update") val enableUpdate: Boolean = true,
     @ColumnInfo(name = "order") val order: Int,
     @ColumnInfo(name = "update_url") val updateUrl: String? = null,

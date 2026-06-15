@@ -48,11 +48,14 @@ import com.xera.xclicker.permission.writeSecureSettingsState
 import com.xera.xclicker.service.A11yService
 import com.xera.xclicker.ui.AuthA11yRoute
 import com.xera.xclicker.ui.component.PerfIcon
+import com.xera.xclicker.ui.component.updateDialogOptions
+import com.xera.xclicker.ui.home.SubsManageRoute
 import com.xera.xclicker.ui.share.LocalMainViewModel
 import com.xera.xclicker.ui.style.EmptyHeight
 import com.xera.xclicker.ui.style.itemHorizontalPadding
 import com.xera.xclicker.ui.style.itemVerticalPadding
 import com.xera.xclicker.util.ShortUrlSet
+import com.xera.xclicker.util.subsItemsFlow
 import com.xera.xclicker.util.throttle
 
 @Serializable
@@ -112,12 +115,30 @@ fun ControlPage() {
             }
             
             val isRunning = a11yRunning
+            val subsItems by subsItemsFlow.collectAsState()
+            
             val onCheckedChange: (Boolean) -> Unit = { newEnabled ->
                 if (newEnabled) {
-                    if (!writeSecureSettings) {
-                        mainVm.navigatePage(AuthA11yRoute)
+                    if (subsItems.isEmpty()) {
+                        mainVm.dialogFlow.updateDialogOptions(
+                            title = "未添加订阅",
+                            text = "尚未添加任何订阅规则，是否前往添加订阅？",
+                            confirmText = "前往添加",
+                            confirmAction = {
+                                mainVm.dialogFlow.value = null
+                                mainVm.navigatePage(SubsManageRoute)
+                            },
+                            dismissText = "取消",
+                            dismissAction = {
+                                mainVm.dialogFlow.value = null
+                            }
+                        )
                     } else {
-                        setA11yServiceEnabled(true)
+                        if (!writeSecureSettings) {
+                            mainVm.navigatePage(AuthA11yRoute)
+                        } else {
+                            setA11yServiceEnabled(true)
+                        }
                     }
                 } else {
                     if (writeSecureSettings) {

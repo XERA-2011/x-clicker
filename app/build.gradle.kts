@@ -69,8 +69,9 @@ android {
         targetSdk = rootProject.ext["android.targetSdk"] as Int
 
         applicationId = "com.xera.xclicker"
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = runCatching { "git rev-list --count HEAD".runCommand().toInt() }.getOrElse { 1 }
+        val latestTag = runCatching { "git describe --tags --abbrev=0".runCommand() }.getOrNull()?.removePrefix("v") ?: "1.0.0"
+        versionName = latestTag + (gitInfo.versionNameSuffix ?: "")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
