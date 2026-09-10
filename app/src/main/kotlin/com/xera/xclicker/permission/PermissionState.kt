@@ -19,7 +19,6 @@ import com.xera.xclicker.MainActivity
 import com.xera.xclicker.MainViewModel
 import com.xera.xclicker.app
 import com.xera.xclicker.appScope
-import com.xera.xclicker.ui.AppOpsAllowRoute
 import com.xera.xclicker.util.AndroidTarget
 import com.xera.xclicker.util.toast
 import com.xera.xclicker.util.updateAllAppInfo
@@ -90,27 +89,6 @@ private fun checkAllowedOp(op: String): Boolean = app.appOpsManager.checkOpNoThr
     it != AppOpsManager.MODE_IGNORED && it != AppOpsManager.MODE_ERRORED
 }
 
-// https://github.com/gkd-kit/gkd/issues/954
-// https://github.com/gkd-kit/gkd/issues/887
-val foregroundServiceSpecialUseState by lazy {
-    PermissionState(
-        name = "特殊用途的前台服务",
-        check = {
-            if (AndroidTarget.UPSIDE_DOWN_CAKE) {
-                checkAllowedOp("android:foreground_service_special_use")
-            } else {
-                true
-            }
-        },
-        reason = AuthReason(
-            text = { "当前操作权限「特殊用途的前台服务」已被限制, 请先解除限制" },
-            confirm = {
-                MainViewModel.instance.navigatePage(AppOpsAllowRoute)
-            },
-        ),
-    )
-}
-
 // https://github.com/orgs/xclicker-kit/discussions/1234
 val accessA11yState by lazy {
     PermissionState(
@@ -121,15 +99,6 @@ val accessA11yState by lazy {
             } else {
                 true
             }
-        },
-    )
-}
-
-val createA11yOverlayState by lazy {
-    PermissionState(
-        name = "创建无障碍悬浮窗",
-        check = {
-            true
         },
     )
 }
@@ -169,9 +138,7 @@ val accessRestrictedSettingsState by lazy {
 val appOpsRestrictStateList by lazy {
     arrayOf(
         accessA11yState,
-        createA11yOverlayState,
         accessRestrictedSettingsState,
-        foregroundServiceSpecialUseState,
     )
 }
 
@@ -181,23 +148,6 @@ val appOpsRestrictedFlow by lazy {
     ) { list ->
         list.any { !it }
     }.stateIn(appScope, SharingStarted.Eagerly, false)
-}
-
-val notificationState by lazy {
-    val permission = PermissionLists.getNotificationServicePermission()
-    PermissionState(
-        name = "通知权限",
-        check = {
-            XXPermissions.isGrantedPermission(app, permission)
-        },
-        request = { asyncRequestPermission(it, permission) },
-        reason = AuthReason(
-            text = { "当前操作需要「通知权限」\n请先前往权限页面授权" },
-            confirm = {
-                XXPermissions.startPermissionActivity(app, permission)
-            }
-        ),
-    )
 }
 
 val canQueryPkgState by lazy {
@@ -308,10 +258,7 @@ val writeSecureSettingsState by lazy {
 
 val allPermissionStates by lazy {
     listOf(
-        notificationState,
-        foregroundServiceSpecialUseState,
         accessA11yState,
-        createA11yOverlayState,
         getAppOpsStatsState,
         accessRestrictedSettingsState,
         canDrawOverlaysState,

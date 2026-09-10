@@ -128,7 +128,6 @@ import com.xera.xclicker.ui.share.LocalMainViewModel
 import com.xera.xclicker.ui.style.AppTheme
 import com.xera.xclicker.util.AndroidTarget
 import com.xera.xclicker.util.BarUtils
-import com.xera.xclicker.util.EditGithubCookieDlg
 import com.xera.xclicker.util.KeyboardUtils
 import com.xera.xclicker.util.LogUtils
 import com.xera.xclicker.util.ShortUrlSet
@@ -304,13 +303,14 @@ class MainActivity : ComponentActivity() {
                                     slideOutHorizontally(targetOffsetX = { it })
                         },
                     )
+                    // Sheet
+                    SubsSheet(mainVm, mainVm.sheetSubsIdFlow)
+
+                    // Dialogs
                     AccessRestrictedSettingsDlg()
                     AuthDialog(mainVm.authReasonFlow)
                     BuildDialog(mainVm.dialogFlow)
-                    mainVm.uploadOptions.ShowDialog()
-                    EditGithubCookieDlg()
                     mainVm.updateStatus?.UpgradeDialog()
-                    SubsSheet(mainVm, mainVm.sheetSubsIdFlow)
                     mainVm.inputSubsLinkOption.ContentDialog()
                     mainVm.ruleGroupState.Render()
                     TextDialog(mainVm.textFlow)

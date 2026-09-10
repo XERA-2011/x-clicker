@@ -15,20 +15,8 @@ import com.xera.xclicker.appScope
 
 import com.xera.xclicker.store.storeFlow
 import com.xera.xclicker.util.LogUtils
-import com.xera.xclicker.util.ScreenUtils
 import com.xera.xclicker.util.UpdateTimeOption
 import com.xera.xclicker.util.checkSubsUpdate
-import com.xera.xclicker.util.launchTry
-import com.xera.xclicker.util.mapState
-import li.songe.selector.MatchOption
-import li.songe.selector.QueryContext
-import li.songe.selector.Selector
-import li.songe.selector.Transform
-import li.songe.selector.getBooleanInvoke
-import li.songe.selector.getCharSequenceAttr
-import li.songe.selector.getCharSequenceInvoke
-import li.songe.selector.getIntInvoke
-
 
 fun onA11yFeatEvent(event: AccessibilityEvent) = event.run {
     if (event.eventType == STATE_CHANGED) {
@@ -39,61 +27,6 @@ fun onA11yFeatEvent(event: AccessibilityEvent) = event.run {
         }
     }
 }
-
-
-
-private var tempEventSelector = "" to (null as Selector?)
-private fun AccessibilityEvent.getEventAttr(name: String): Any? = when (name) {
-    "name" -> className
-    "desc" -> contentDescription
-    "text" -> text
-    else -> null
-}
-
-private val a11yEventTransform by lazy {
-    Transform<AccessibilityEvent>(
-        getAttr = { target, name ->
-            when (target) {
-                is QueryContext<*> -> when (name) {
-                    "prev" -> target.prev
-                    "current" -> target.current
-                    else -> (target.current as AccessibilityEvent).getEventAttr(name)
-                }
-
-                is CharSequence -> getCharSequenceAttr(target, name)
-                is AccessibilityEvent -> target.getEventAttr(name)
-                is List<*> -> when (name) {
-                    "size" -> target.size
-                    else -> null
-                }
-
-                else -> null
-            }
-        },
-        getInvoke = { target, name, args ->
-            when (target) {
-                is Int -> getIntInvoke(target, name, args)
-                is Boolean -> getBooleanInvoke(target, name, args)
-                is CharSequence -> getCharSequenceInvoke(target, name, args)
-                is List<*> -> when (name) {
-                    "get" -> {
-                        (args.singleOrNull() as? Int)?.let { index ->
-                            target.getOrNull(index)
-                        }
-                    }
-
-                    else -> null
-                }
-
-                else -> null
-            }
-        },
-        getName = { it.className },
-        getChildren = { emptySequence() },
-        getParent = { null }
-    )
-}
-
 
 private var lastUpdateSubsTime = 0L
 private fun watchAutoUpdateSubs() {
@@ -115,44 +48,6 @@ private fun initRuleChangedLog() {
                 }.toTypedArray())
             }
         }
-    }
-}
-
-private const val volumeChangedAction = "android.media.VOLUME_CHANGED_ACTION"
-private fun createVolumeReceiver() = object : BroadcastReceiver() {
-    var lastVolumeTriggerTime = -1L
-    override fun onReceive(context: Context?, intent: Intent?) {
-        if (intent?.action == volumeChangedAction) {
-            val t = System.currentTimeMillis()
-            if (t - lastVolumeTriggerTime > 3000 && !ScreenUtils.isScreenLock()) {
-                lastVolumeTriggerTime = t
-                appScope.launchTry {
-                    // captureSnapshot removed
-                }
-            }
-        }
-    }
-}
-
-private fun initCaptureVolume() {
-    var captureVolumeReceiver: BroadcastReceiver? = null
-    val changeRegister: (Boolean) -> Unit = {
-        captureVolumeReceiver?.let(app::unregisterReceiver)
-        captureVolumeReceiver = if (it) {
-            createVolumeReceiver().apply {
-                ContextCompat.registerReceiver(
-                    app,
-                    this,
-                    IntentFilter(volumeChangedAction),
-                    ContextCompat.RECEIVER_EXPORTED
-                )
-            }
-        } else {
-            null
-        }
-    }
-    appScope.launch(Dispatchers.IO) {
-        storeFlow.mapState(appScope) { s -> s.captureVolumeChange }.collect(changeRegister)
     }
 }
 
@@ -196,6 +91,5 @@ private fun initScreenStateReceiver() {
 
 fun initA11yFeat() {
     initRuleChangedLog()
-    initCaptureVolume()
     initScreenStateReceiver()
 }

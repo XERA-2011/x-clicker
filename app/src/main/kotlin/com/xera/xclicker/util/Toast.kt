@@ -26,7 +26,6 @@ import com.xera.xclicker.data.ResolvedRule
 import com.xera.xclicker.isActivityVisible
 import com.xera.xclicker.permission.canDrawOverlaysState
 import com.xera.xclicker.service.A11yService
-import com.xera.xclicker.service.OverlayWindowService
 import com.xera.xclicker.store.actionCountFlow
 import com.xera.xclicker.store.storeFlow
 import li.songe.loc.Loc
@@ -43,7 +42,7 @@ fun toast(
         }
         return
     }
-    if (forced || isActivityVisible || OverlayWindowService.isAnyAlive) {
+    if (forced || isActivityVisible) {
         Toaster.show(text)
     }
     if (loc.isNotEmpty()) {

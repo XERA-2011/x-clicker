@@ -12,7 +12,7 @@ import com.xera.xclicker.service.A11yService
 import com.xera.xclicker.util.AndroidTarget
 import com.xera.xclicker.util.OnSimpleLife
 import com.xera.xclicker.util.mapState
-import li.songe.selector.initDefaultTypeInfo
+import li.gkd.selector.createDefaultSelectorTypeModel
 import kotlin.contracts.contract
 
 context(context: OnSimpleLife)
@@ -100,7 +100,7 @@ fun AccessibilityNodeInfo.isExpired(expiryMillis: Long): Boolean {
     return (System.currentTimeMillis() - generatedTime) > expiryMillis
 }
 
-val typeInfo by lazy { initDefaultTypeInfo().globalType }
+val selectorTypeModel by lazy { createDefaultSelectorTypeModel() }
 
 val AccessibilityNodeInfo.compatChecked: Boolean?
     get() = if (AndroidTarget.BAKLAVA) {

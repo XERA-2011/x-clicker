@@ -14,7 +14,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
-import com.xera.xclicker.a11y.typeInfo
+import com.xera.xclicker.a11y.selectorTypeModel
 import com.xera.xclicker.util.LOCAL_SUBS_IDS
 import com.xera.xclicker.util.LogUtils
 import com.xera.xclicker.util.ScreenUtils
@@ -25,7 +25,9 @@ import com.xera.xclicker.util.json
 import com.xera.xclicker.util.toJson5String
 import com.xera.xclicker.util.toast
 import li.songe.json5.Json5
-import li.songe.selector.Selector
+import li.gkd.selector.Selector
+import li.gkd.selector.SelectorCompileResult
+import li.gkd.selector.SelectorTypeResult
 import net.objecthunter.exp4j.Expression
 import net.objecthunter.exp4j.ExpressionBuilder
 import java.util.Objects
@@ -604,13 +606,19 @@ data class RawSubscription(
                 r.getAllSelectorStrings()
             }
             allSelectorStrings.forEach { source ->
-                try {
-                    val selector = Selector.parse(source)
-                    selector.checkType(typeInfo)
-                    cacheMap[source] = selector
-                } catch (e: Exception) {
-                    LogUtils.d("非法选择器", source, e.toString())
-                    return "非法选择器\n$source\n${e.message}"
+                val selector = when (val result = Selector.compile(source)) {
+                    is SelectorCompileResult.Success -> result.value
+                    is SelectorCompileResult.Failure -> {
+                        LogUtils.d("非法选择器", source, result.error.toString())
+                        return "非法选择器\n$source\n${result.error.message}"
+                    }
+                }
+                when (val result = selector.validateType(selectorTypeModel)) {
+                    is SelectorTypeResult.Success -> cacheMap[source] = result.value
+                    is SelectorTypeResult.Failure -> {
+                        LogUtils.d("非法选择器", source, result.error.toString())
+                        return "非法选择器\n$source\n${result.error.message}"
+                    }
                 }
             }
             rules.forEach { r ->

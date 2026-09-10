@@ -12,7 +12,6 @@ atomicfu = "0.32.1"
 coil = "3.4.0"
 telephoto = "0.19.0"
 remap = "0.1.1"
-shizuku = "13.1.5"
 loc = "0.6.2"
 
 [libraries]
@@ -21,9 +20,6 @@ kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotl
 kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "serialization" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-atomicfu = { module = "org.jetbrains.kotlinx:atomicfu", version.ref = "atomicfu" }
-ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
-ktor-server-cio = { module = "io.ktor:ktor-server-cio", version.ref = "ktor" }
-ktor-server-content-negotiation = { module = "io.ktor:ktor-server-content-negotiation", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
@@ -59,9 +55,6 @@ google-accompanist-drawablepainter = "com.google.accompanist:accompanist-drawabl
 junit = "junit:junit:4.13.2"
 remap-processor = { module = "li.songe.remap:remap-processor", version.ref = "remap" }
 remap-annotation = { module = "li.songe.remap:remap-annotation", version.ref = "remap" }
-rikka-shizuku-api = { module = "dev.rikka.shizuku:api", version.ref = "shizuku" }
-rikka-shizuku-provider = { module = "dev.rikka.shizuku:provider", version.ref = "shizuku" }
-lsposed-hiddenapibypass = "org.lsposed.hiddenapibypass:hiddenapibypass:6.1"
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 coil-gif = { module = "io.coil-kt.coil3:coil-gif", version.ref = "coil" }

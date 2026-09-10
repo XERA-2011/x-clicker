@@ -58,12 +58,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import com.xera.xclicker.MainActivity
 import com.xera.xclicker.R
-import com.xera.xclicker.permission.canDrawOverlaysState
-import com.xera.xclicker.permission.foregroundServiceSpecialUseState
-import com.xera.xclicker.permission.ignoreBatteryOptimizationsState
-import com.xera.xclicker.permission.notificationState
-import com.xera.xclicker.permission.requiredPermission
-
 import com.xera.xclicker.store.storeFlow
 import com.xera.xclicker.ui.component.CustomOutlinedTextField
 import com.xera.xclicker.ui.component.FullscreenDialog
@@ -186,122 +180,6 @@ fun SettingsPage() {
         )
     }
 
-    var showNotifTextInputDlg by vm.showNotifTextInputDlgFlow.asMutableState()
-    if (showNotifTextInputDlg) {
-        var titleValue by remember { mutableStateOf(store.customNotifTitle) }
-        var textValue by remember { mutableStateOf(store.customNotifText) }
-        AlertDialog(
-            properties = DialogProperties(dismissOnClickOutside = false),
-            title = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(text = "通知文案")
-                    PerfIconButton(
-                        imageVector = PerfIcon.HelpOutline,
-                        contentDescription = "文案规则",
-                        onClickLabel = "打开文案规则弹窗",
-                        onClick = throttle {
-                            showNotifTextInputDlg = false
-                            val confirmAction = {
-                                mainVm.dialogFlow.value = null
-                                showNotifTextInputDlg = true
-                            }
-                            mainVm.dialogFlow.updateDialogOptions(
-                                title = "文案规则",
-                                text = $$"通知文案支持变量替换，规则如下\n${i} 全局规则数\n${k} 应用数\n${u} 应用规则数\n${n} 触发次数\n\n示例模板\n${i}全局/${k}应用/${u}规则/${n}触发\n\n替换结果\n0全局/1应用/2规则/3触发",
-                                confirmAction = confirmAction,
-                                onDismissRequest = confirmAction,
-                            )
-                        },
-                    )
-                }
-            },
-            text = {
-                val titleMaxLen = 32
-                val textMaxLen = 64
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    CustomOutlinedTextField(
-                        label = { Text("主标题") },
-                        value = titleValue,
-                        placeholder = { Text(text = "请输入内容，支持变量替换") },
-                        onValueChange = {
-                            titleValue = (if (it.length > titleMaxLen) it.take(titleMaxLen) else it)
-                                .filter { c -> c !in "\n\r" }
-                        },
-                        supportingText = {
-                            Text(
-                                text = "${titleValue.length} / $titleMaxLen",
-                                modifier = Modifier.fillMaxWidth(),
-                                textAlign = TextAlign.End,
-                            )
-                        },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        contentPadding = PaddingValues(12.dp),
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    CustomOutlinedTextField(
-                        label = { Text("副标题") },
-                        value = textValue,
-                        placeholder = { Text(text = "请输入内容，支持变量替换") },
-                        onValueChange = {
-                            textValue = if (it.length > textMaxLen) it.take(textMaxLen) else it
-                        },
-                        supportingText = {
-                            Text(
-                                text = "${textValue.length} / $textMaxLen",
-                                modifier = Modifier.fillMaxWidth(),
-                                textAlign = TextAlign.End,
-                            )
-                        },
-                        maxLines = 4,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .autoFocus(),
-                        contentPadding = PaddingValues(12.dp),
-                    )
-                }
-            },
-            onDismissRequest = {
-                showNotifTextInputDlg = false
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    context.justHideSoftInput()
-                    if (store.customNotifTitle != textValue || store.customNotifText != textValue) {
-                        storeFlow.update {
-                            it.copy(
-                                customNotifTitle = titleValue,
-                                customNotifText = textValue
-                            )
-                        }
-                        toast("更新成功")
-                    }
-                    showNotifTextInputDlg = false
-                }) {
-                    Text(
-                        text = "确认",
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showNotifTextInputDlg = false }) {
-                    Text(
-                        text = "取消",
-                    )
-                }
-            })
-    }
-
-
-
-
-
     val scrollKey = rememberSaveable { mutableIntStateOf(0) }
     val (scrollBehavior, scrollState) = useScrollBehaviorState(scrollKey)
     Scaffold(
@@ -392,23 +270,6 @@ fun SettingsPage() {
 
                 }
             }
-
-            val subsStatus by vm.subsStatusFlow.collectAsState()
-            TextSwitch(
-                title = "通知文案",
-                subtitle = if (store.useCustomNotifText) {
-                    store.customNotifTitle + " / " + store.customNotifText
-                } else {
-                    subsStatus
-                },
-                checked = store.useCustomNotifText,
-                onClickLabel = "打开修改通知文案弹窗",
-                onClick = { showNotifTextInputDlg = true },
-                onCheckedChange = {
-                    storeFlow.value = store.copy(
-                        useCustomNotifText = it
-                    )
-                })
 
             TextSwitch(
                 title = "后台隐藏",

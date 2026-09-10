@@ -92,7 +92,6 @@ android {
 
     buildFeatures {
         compose = true
-        aidl = true
         resValues = true
     }
 
@@ -264,8 +263,6 @@ dependencies {
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.serialization.kotlinx.json)
 
-    implementation(libs.androidx.paging.compose)
-
     implementation(libs.google.accompanist.drawablepainter)
 
     implementation(libs.kotlinx.serialization.core)
@@ -291,7 +288,6 @@ dependencies {
     implementation(libs.device)
 
     implementation(libs.json5)
-    compileOnly(libs.loc.annotation)
 
     implementation(libs.kevinnzouWebview)
     implementation(kotlin("reflect"))

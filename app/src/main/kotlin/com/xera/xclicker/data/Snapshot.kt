@@ -18,18 +18,18 @@ import com.xera.xclicker.util.format
 )
 @Serializable
 data class Snapshot(
-    @PrimaryKey @ColumnInfo(name = "id") override val id: Long,
+    @PrimaryKey @ColumnInfo(name = "id") val id: Long,
 
-    @ColumnInfo(name = "app_id") override val appId: String,
-    @ColumnInfo(name = "activity_id") override val activityId: String?,
+    @ColumnInfo(name = "app_id") val appId: String,
+    @ColumnInfo(name = "activity_id") val activityId: String?,
 
-    @ColumnInfo(name = "screen_height") override val screenHeight: Int,
-    @ColumnInfo(name = "screen_width") override val screenWidth: Int,
-    @ColumnInfo(name = "is_landscape") override val isLandscape: Boolean,
+    @ColumnInfo(name = "screen_height") val screenHeight: Int,
+    @ColumnInfo(name = "screen_width") val screenWidth: Int,
+    @ColumnInfo(name = "is_landscape") val isLandscape: Boolean,
 
     @ColumnInfo(name = "github_asset_id") val githubAssetId: Int? = null,
 
-    ) : BaseSnapshot {
+) {
 
     val date by lazy { id.format("MM-dd HH:mm:ss") }
 

@@ -63,17 +63,6 @@ fun ShareLogDlg(showShareLogDlgFlow: MutableStateFlow<Boolean>) {
                         })
                         .then(modifier)
                 )
-                Text(
-                    text = "生成链接(需科学上网)",
-                    modifier = Modifier
-                        .clickable(onClick = throttle {
-                            visible = false
-                            mainVm.uploadOptions.startTask(
-                                getFile = { buildLogFile() }
-                            )
-                        })
-                        .then(modifier)
-                )
             }
         }
     }

@@ -9,19 +9,10 @@ import com.xera.xclicker.ui.share.BaseViewModel
 import com.xera.xclicker.ui.share.asMutableStateFlow
 import com.xera.xclicker.ui.share.useAppFilter
 import com.xera.xclicker.util.AppSortOption
-import com.xera.xclicker.util.EMPTY_RULE_TIP
 import com.xera.xclicker.util.findOption
-import com.xera.xclicker.util.getSubsStatus
-import com.xera.xclicker.util.ruleSummaryFlow
 import com.xera.xclicker.util.usedSubsEntriesFlow
 
 class HomeVm : BaseViewModel() {
-
-    val subsStatusFlow by lazy {
-        combine(ruleSummaryFlow, actionCountFlow) { ruleSummary, count ->
-            getSubsStatus(ruleSummary, count)
-        }.stateInit(EMPTY_RULE_TIP)
-    }
 
     val usedSubsItemCountFlow = usedSubsEntriesFlow.mapNew { it.size }
 
@@ -71,7 +62,6 @@ class HomeVm : BaseViewModel() {
     val appInfosFlow = appFilter.appListFlow
 
     val showToastInputDlgFlow = MutableStateFlow(false)
-    val showNotifTextInputDlgFlow = MutableStateFlow(false)
     val showToastSettingsDlgFlow = MutableStateFlow(false)
     val showA11yBlockDlgFlow = MutableStateFlow(false)
 }

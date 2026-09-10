@@ -37,8 +37,10 @@ import com.xera.xclicker.util.launchTry
 import com.xera.xclicker.util.runMainPost
 import com.xera.xclicker.util.showActionToast
 import com.xera.xclicker.util.systemUiAppId
-import li.songe.selector.MatchOption
-import li.songe.selector.Selector
+import li.gkd.selector.MatchOptions
+import li.gkd.selector.Selector
+import li.gkd.selector.SelectorCompileResult
+import li.gkd.selector.SelectorTypeResult
 import java.util.concurrent.Executors
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
@@ -67,15 +69,7 @@ class A11yRuleEngine(val service: A11yCommonImpl) {
     }
 
     fun onScreenForcedActive() {
-        // 关闭屏幕 -> Activity::onStop -> 点亮屏幕 -> Activity::onStart -> Activity::onResume
-        val a = topActivityFlow.value
-        synchronized(topActivityFlow) {
-            updateTopActivity(
-                a.appId,
-                a.activityId,
-                scene = ActivityScene.ScreenOn
-            )
-        }
+        A11yState.onScreenForcedActive()
         startQueryJob()
     }
 
@@ -446,14 +440,17 @@ class A11yRuleEngine(val service: A11yCommonImpl) {
 
 
         suspend fun execAction(gkdAction: XClickerAction): ActionResult {
-            val selector = Selector.parseOrNull(gkdAction.selector) ?: throw RpcError("非法选择器")
-            runCatching { selector.checkType(typeInfo) }.exceptionOrNull()?.let {
-                throw RpcError("选择器类型错误:${it.message}")
+            val selectorResult = Selector.compile(gkdAction.selector)
+            val selector = (selectorResult as? SelectorCompileResult.Success)?.value
+                ?: throw RpcError("非法选择器")
+            val typeResult = selector.validateType(selectorTypeModel)
+            if (typeResult is SelectorTypeResult.Failure) {
+                throw RpcError("选择器类型错误:${typeResult.error.message}")
             }
             val s = instance ?: throw RpcError("服务未连接")
             val a = s.safeActiveWindow ?: throw RpcError("界面没有节点信息")
             val targetNode = A11yContext(s, interruptable = false).querySelfOrSelector(
-                a, selector, MatchOption(fastQuery = gkdAction.fastQuery)
+                a, selector, MatchOptions(fastQuery = gkdAction.fastQuery)
             ) ?: throw RpcError("没有查询到节点")
             return withContext(Dispatchers.IO) {
                 ActionPerformer

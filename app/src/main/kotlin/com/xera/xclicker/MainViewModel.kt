@@ -34,7 +34,6 @@ import com.xera.xclicker.ui.WebViewRoute
 import com.xera.xclicker.ui.component.AlertDialogOptions
 import com.xera.xclicker.ui.component.InputSubsLinkOption
 import com.xera.xclicker.ui.component.RuleGroupState
-import com.xera.xclicker.ui.component.UploadOptions
 import com.xera.xclicker.ui.home.HomeRoute
 import com.xera.xclicker.ui.share.BaseViewModel
 import com.xera.xclicker.util.AutomatorModeOption
@@ -121,12 +120,6 @@ class MainViewModel : BaseViewModel(), OnSimpleLife by DefaultSimpleLifeImpl() {
     val authReasonFlow = MutableStateFlow<AuthReason?>(null)
 
     val updateStatus = if (META.updateEnabled) UpdateStatus(viewModelScope) else null
-
-    val shizukuErrorFlow = MutableStateFlow<Throwable?>(null)
-
-    val uploadOptions = UploadOptions(this)
-
-    val showEditCookieDlgFlow = MutableStateFlow(false)
 
     val inputSubsLinkOption = InputSubsLinkOption()
 
@@ -237,18 +230,6 @@ class MainViewModel : BaseViewModel(), OnSimpleLife by DefaultSimpleLifeImpl() {
 
     val termsAcceptedFlow = MutableStateFlow(true)
 
-    val githubCookieFlow by lazy {
-        createTextFlow(
-            key = "github_cookie",
-            decode = { it ?: "" },
-            encode = { it },
-            private = true,
-            scope = viewModelScope,
-        )
-    }
-
-
-
     private val a11yServicesFlow = useEnabledA11yServicesFlow()
     val a11yServiceEnabledFlow = useA11yServiceEnabledFlow(a11yServicesFlow)
 
@@ -279,10 +260,6 @@ class MainViewModel : BaseViewModel(), OnSimpleLife by DefaultSimpleLifeImpl() {
             updateStatus.checkUpdate()
         }
 
-        viewModelScope.launch(Dispatchers.IO) {
-            // preload
-            githubCookieFlow.value
-        }
         viewModelScope.launchTry(Dispatchers.IO) {
             val list = (crashTempFolder.listFiles() ?: emptyArray()).mapNotNull {
                 try {

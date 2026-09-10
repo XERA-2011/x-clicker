@@ -11,22 +11,26 @@ kotlin {
             jvmTarget.set(rootProject.ext["kotlin.jvmTarget"] as JvmTarget)
         }
     }
-    js {
-        compilerOptions {
-            target.set("es2015")
-        }
-        binaries.executable()
-        useEsModules()
-        generateTypeScriptDefinitions()
-        browser {}
+    compilerOptions {
+        freeCompilerArgs.addAll(
+            "-opt-in=kotlin.RequiresOptIn",
+            "-opt-in=kotlin.contracts.ExperimentalContracts",
+            "-opt-in=kotlinx.serialization.ExperimentalSerializationApi",
+            "-Xcontext-parameters",
+            "-Xexplicit-backing-fields",
+            "-XXLanguage:+MultiDollarInterpolation",
+        )
     }
     sourceSets {
-        all {
-            languageSettings.optIn("kotlin.js.ExperimentalJsExport")
-        }
         commonMain {
             dependencies {
                 implementation(libs.kotlin.stdlib)
+            }
+        }
+        commonTest {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.json5)
             }
         }
         jvmTest {

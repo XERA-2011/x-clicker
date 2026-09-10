@@ -1,6 +1,5 @@
 package com.xera.xclicker.util
 
-import android.app.Service
 import android.content.ComponentName
 import android.content.ContentValues
 import android.content.Context
@@ -19,11 +18,8 @@ import com.xera.xclicker.MainActivity
 import com.xera.xclicker.app
 import com.xera.xclicker.isActivityVisible
 import com.xera.xclicker.permission.canWriteExternalStorage
-import com.xera.xclicker.permission.foregroundServiceSpecialUseState
-import com.xera.xclicker.permission.notificationState
 import com.xera.xclicker.permission.requiredPermission
 import java.io.File
-import kotlin.reflect.KClass
 
 fun MainActivity.shareFile(file: File, title: String) {
     val uri = FileProvider.getUriForFile(
@@ -127,24 +123,6 @@ fun openApp(appId: String) {
         app.tryStartActivity(intent)
     } else {
         toast("请检查此应用是否安装或禁用")
-    }
-}
-
-fun <T : Service> stopServiceByClass(clazz: KClass<T>) {
-    val intent = Intent(app, clazz.java)
-    app.stopService(intent)
-}
-
-fun <T : Service> startForegroundServiceByClass(clazz: KClass<T>) {
-    if (!notificationState.checkOrToast()) return
-    if (!foregroundServiceSpecialUseState.checkOrToast()) return
-    val intent = Intent(app, clazz.java)
-    try {
-        app.startForegroundService(intent)
-    } catch (e: Throwable) {
-        LogUtils.d(e)
-        val prefix = if (isActivityVisible) "" else "${META.appName}: "
-        toast("${prefix}启动服务失败: ${e.message}", forced = true)
     }
 }
 

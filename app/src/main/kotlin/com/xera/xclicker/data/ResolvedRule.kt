@@ -9,8 +9,8 @@ import com.xera.xclicker.a11y.appChangeTime
 import com.xera.xclicker.a11y.lastTriggerRule
 import com.xera.xclicker.a11y.lastTriggerTime
 import com.xera.xclicker.store.actionCountFlow
-import li.songe.selector.MatchOption
-import li.songe.selector.Selector
+import li.gkd.selector.MatchOptions
+import li.gkd.selector.Selector
 
 sealed class ResolvedRule(
     val rule: RawSubscription.RawRuleProps,
@@ -24,20 +24,24 @@ sealed class ResolvedRule(
     val excludeData = g.excludeData
     private val preKeys = (rule.preKeys ?: emptyList()).toSet()
     val matches =
-        (rule.matches ?: emptyList()).map { s -> group.cacheMap[s] ?: Selector.parse(s) }
+        (rule.matches ?: emptyList()).map { s -> group.cacheMap[s] ?: Selector.compile(s).value }
     val anyMatches =
-        (rule.anyMatches ?: emptyList()).map { s -> group.cacheMap[s] ?: Selector.parse(s) }
+        (rule.anyMatches ?: emptyList()).map { s -> group.cacheMap[s] ?: Selector.compile(s).value }
     val excludeMatches =
-        (rule.excludeMatches ?: emptyList()).map { s -> group.cacheMap[s] ?: Selector.parse(s) }
+        (rule.excludeMatches ?: emptyList()).map { s ->
+            group.cacheMap[s] ?: Selector.compile(s).value
+        }
     val excludeAllMatches =
-        (rule.excludeAllMatches ?: emptyList()).map { s -> group.cacheMap[s] ?: Selector.parse(s) }
+        (rule.excludeAllMatches ?: emptyList()).map { s ->
+            group.cacheMap[s] ?: Selector.compile(s).value
+        }
 
     private val resetMatch = rule.resetMatch ?: group.resetMatch
     val matchDelay = rule.matchDelay ?: group.matchDelay ?: 0L
     val actionDelay = rule.actionDelay ?: group.actionDelay ?: 0L
     private val matchTime = rule.matchTime ?: group.matchTime
     private val forcedTime = rule.forcedTime ?: group.forcedTime ?: 0L
-    val matchOption = MatchOption(
+    val matchOptions = MatchOptions(
         fastQuery = rule.fastQuery ?: group.fastQuery ?: false
     )
     val matchRoot = rule.matchRoot ?: group.matchRoot ?: false
@@ -58,7 +62,7 @@ sealed class ResolvedRule(
     } ?: group.actionMaximum
 
     private val hasSlowSelector by lazy {
-        (matches + excludeMatches + anyMatches + excludeAllMatches).any { s -> s.isSlow(matchOption) }
+        (matches + excludeMatches + anyMatches + excludeAllMatches).any { s -> s.isSlow(matchOptions) }
     }
     val priorityTime = rule.priorityTime ?: group.priorityTime ?: 0
     val priorityActionMaximum = rule.priorityActionMaximum ?: group.priorityActionMaximum ?: 1

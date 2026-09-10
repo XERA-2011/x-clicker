@@ -367,14 +367,6 @@ val ruleSummaryFlow by lazy {
     }.flowOn(Dispatchers.Default).stateIn(appScope, SharingStarted.Eagerly, RuleSummary())
 }
 
-fun getSubsStatus(ruleSummary: RuleSummary, count: Long): String {
-    return if (count > 0) {
-        "${ruleSummary.numText}/${count}触发"
-    } else {
-        ruleSummary.numText
-    }
-}
-
 private fun loadSubs(id: Long): RawSubscription {
     val file = subsFolder.resolve("${id}.json")
     if (!file.exists()) {

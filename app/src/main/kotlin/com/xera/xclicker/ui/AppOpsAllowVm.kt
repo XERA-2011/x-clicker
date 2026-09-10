@@ -7,7 +7,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import com.xera.xclicker.permission.foregroundServiceSpecialUseState
+import com.xera.xclicker.permission.appOpsRestrictStateList
 
 class AppOpsAllowVm : ViewModel() {
     val showCopyDlgFlow = MutableStateFlow(false)
@@ -15,7 +15,7 @@ class AppOpsAllowVm : ViewModel() {
     init {
         viewModelScope.launch(Dispatchers.IO) {
             while (isActive) {
-                foregroundServiceSpecialUseState.updateAndGet()
+                appOpsRestrictStateList.forEach { it.updateAndGet() }
                 delay(1000)
             }
         }

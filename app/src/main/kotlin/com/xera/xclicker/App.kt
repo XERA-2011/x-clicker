@@ -32,7 +32,6 @@ import kotlinx.serialization.Serializable
 import com.xera.xclicker.a11y.initA11yFeat
 import com.xera.xclicker.data.CrashData
 import com.xera.xclicker.data.selfAppInfo
-import com.xera.xclicker.notif.initChannel
 
 import com.xera.xclicker.store.initStore
 import com.xera.xclicker.util.AndroidTarget
@@ -236,7 +235,6 @@ class App : Application() {
         }
         initToast()
         initStore()
-        initChannel()
         initAppState()
         initA11yFeat()
 
