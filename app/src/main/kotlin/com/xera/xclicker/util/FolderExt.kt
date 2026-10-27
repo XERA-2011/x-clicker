@@ -34,14 +34,10 @@ private val filesDir: File by lazy {
 
 val dbFolder: File
     get() = filesDir.resolve("db").autoMk()
-val shFolder: File
-    get() = filesDir.resolve("sh").autoMk()
 val storeFolder: File
     get() = filesDir.resolve("store").autoMk()
 val subsFolder: File
     get() = filesDir.resolve("subscription").autoMk()
-val snapshotFolder: File
-    get() = filesDir.resolve("snapshot").autoMk()
 val logFolder: File
     get() = filesDir.resolve("log").autoMk()
 val crashFolder: File

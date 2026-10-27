@@ -43,7 +43,6 @@ import com.xera.xclicker.util.LogUtils
 import com.xera.xclicker.util.OnSimpleLife
 import com.xera.xclicker.util.ThrottleTimer
 import com.xera.xclicker.util.UpdateStatus
-import com.xera.xclicker.util.appIconMapFlow
 import com.xera.xclicker.util.clearCache
 import com.xera.xclicker.util.client
 import com.xera.xclicker.util.crashFolder
@@ -249,8 +248,6 @@ class MainViewModel : BaseViewModel(), OnSimpleLife by DefaultSimpleLifeImpl() {
     var tempCrashDataList = emptyList<CrashData>()
 
     init {
-        // preload
-        appIconMapFlow.value
         viewModelScope.launchTry(Dispatchers.IO) {
             // 每次进入删除缓存
             clearCache()

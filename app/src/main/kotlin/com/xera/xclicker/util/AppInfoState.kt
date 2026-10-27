@@ -8,6 +8,7 @@ import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import android.os.UserHandle
+import android.util.LruCache
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -26,23 +27,24 @@ import com.xera.xclicker.appScope
 import com.xera.xclicker.data.AppInfo
 import com.xera.xclicker.data.otherUserMapFlow
 import com.xera.xclicker.data.toAppInfo
-import com.xera.xclicker.data.toAppInfoAndIcon
-import com.xera.xclicker.permission.canQueryPkgState
 import com.xera.xclicker.permission.canQueryPkgState
 
 val userAppInfoMapFlow = MutableStateFlow(emptyMap<String, AppInfo>())
-val userAppIconMapFlow = MutableStateFlow(emptyMap<String, Drawable>())
 val otherUserAppInfoMapFlow = MutableStateFlow(emptyMap<String, AppInfo>())
-val otherUserAppIconMapFlow = MutableStateFlow(emptyMap<String, Drawable>())
 
 val appInfoMapFlow by lazy {
     combine(otherUserAppInfoMapFlow, userAppInfoMapFlow) { a, b -> a + b }
         .stateIn(appScope, SharingStarted.Eagerly, emptyMap())
 }
 
-val appIconMapFlow by lazy {
-    combine(otherUserAppIconMapFlow, userAppIconMapFlow) { a, b -> a + b }
-        .stateIn(appScope, SharingStarted.Eagerly, emptyMap())
+private val appIconCache = object : LruCache<String, Drawable>(32) {}
+
+fun loadAppIcon(appId: String): Drawable? {
+    appIconCache.get(appId)?.let { return it }
+    return runCatching {
+        app.packageManager.getApplicationIcon(appId)
+    }.getOrNull()?.takeIf { it.intrinsicWidth > 0 && it.intrinsicHeight > 0 }
+        ?.also { appIconCache.put(appId, it) }
 }
 
 val systemAppInfoCacheFlow by lazy {
@@ -124,7 +126,6 @@ val updateAppMutex = MutexState()
 
 private fun updateOtherUserAppInfo(userAppInfoMap: Map<String, AppInfo>? = null) {
     otherUserMapFlow.value = emptyMap()
-    otherUserAppIconMapFlow.value = emptyMap()
     otherUserAppInfoMapFlow.value = emptyMap()
 }
 
@@ -133,25 +134,18 @@ private fun updatePartAppInfo(
 ) = updateAppMutex.launchTry(appScope, Dispatchers.IO) {
     willUpdateAppIds.update { it - appIds }
     val newAppMap = HashMap(userAppInfoMapFlow.value)
-    val newIconMap = HashMap(userAppIconMapFlow.value)
     val oldMapSize = newAppMap.size
     appIds.forEach { appId ->
+        appIconCache.remove(appId)
         val info = app.getPkgInfo(appId)
         if (info != null) {
             newAppMap[appId] = info.toAppInfo()
         } else {
             newAppMap.remove(appId)
         }
-        val icon = info?.pkgIcon
-        if (icon != null) {
-            newIconMap[appId] = icon
-        } else {
-            newIconMap.remove(appId)
-        }
     }
     updateOtherUserAppInfo(newAppMap)
     userAppInfoMapFlow.value = newAppMap
-    userAppIconMapFlow.value = newIconMap
     LogUtils.d(
         "updatePartAppInfo",
         "change=${appIds.map { (if (newAppMap.contains(it)) "+" else "-") + it }}",
@@ -163,15 +157,11 @@ val appListAuthAbnormalFlow = MutableStateFlow(false)
 
 fun updateAllAppInfo(showToast: Boolean = true): Unit = updateAppMutex.launchTry(appScope, Dispatchers.IO) {
     val newAppMap = HashMap<String, AppInfo>()
-    val newIconMap = HashMap<String, Drawable>()
     // see #1169 DeadObjectException BadParcelableException
     val pkgList = app.packageManager.getInstalledPackages(PKG_FLAGS)
     pkgList.forEach { pkgInfo ->
-        val (appInfo, appIcon) = pkgInfo.toAppInfoAndIcon()
+        val appInfo = pkgInfo.toAppInfo()
         newAppMap[pkgInfo.packageName] = appInfo
-        if (appIcon != null) {
-            newIconMap[pkgInfo.packageName] = appIcon
-        }
     }
     val mayAuthDenied = newAppMap.count { !it.value.isSystem } <= 4
     canQueryPkgState.updateAndGet()
@@ -198,17 +188,13 @@ fun updateAllAppInfo(showToast: Boolean = true): Unit = updateAppMutex.launchTry
                     .map { it.activityInfo.packageName }.toSet()
                     .filter { !newAppMap.contains(it) }.mapNotNull { app.getPkgInfo(it) }.toList()
             visiblePkgList.forEach { pkgInfo ->
-                val (appInfo, appIcon) = pkgInfo.toAppInfoAndIcon(hidden = false)
+                val appInfo = pkgInfo.toAppInfo(hidden = false)
                 newAppMap[pkgInfo.packageName] = appInfo
-                if (appIcon != null) {
-                    newIconMap[pkgInfo.packageName] = appIcon
-                }
             }
         }
     }
     updateOtherUserAppInfo(newAppMap)
     userAppInfoMapFlow.value = newAppMap
-    userAppIconMapFlow.value = newIconMap
     if (showToast && !app.justStarted) {
         toast("应用列表更新成功")
     }

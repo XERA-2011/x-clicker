@@ -23,6 +23,9 @@ public class SelectorMatch<T : Any> internal constructor(
 /** The successful path of one unit selector. */
 public class SelectorMatchUnit<T : Any> internal constructor(
     public val target: T,
+    /** Starting candidate, which may differ from the target selected by @. */
+    public val queryNode: T,
+    public val fastQueryList: List<FastQuery>,
     public val steps: Array<SelectorMatchStep<T>>,
     public val range: SourceRange?,
 )

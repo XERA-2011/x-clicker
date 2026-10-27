@@ -14,6 +14,7 @@ data class SettingsStore(
     val enableAutomator: Boolean = false,
     val automatorMode: Int = AutomatorModeOption.A11yMode.value,
     val enableMatch: Boolean = true,
+    val enableStatusOverlay: Boolean = true,
     val excludeFromRecents: Boolean = false,
 
     val updateSubsInterval: Long = UpdateTimeOption.Everyday.value,

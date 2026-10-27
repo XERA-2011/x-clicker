@@ -4,11 +4,9 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
-import android.graphics.drawable.Drawable
 import kotlinx.serialization.Serializable
 import com.xera.xclicker.app
 import com.xera.xclicker.util.AndroidTarget
-import com.xera.xclicker.util.pkgIcon
 
 val currentUserId = 0
 
@@ -109,16 +107,4 @@ fun PackageInfo.toAppInfo(
         ))),
         enabled = getEnabled(userId),
     )
-}
-
-fun PackageInfo.toAppInfoAndIcon(
-    userId: Int = currentUserId,
-    hidden: Boolean? = null,
-): Pair<AppInfo, Drawable?> {
-    val appInfo = toAppInfo(userId, hidden)
-    return if (appInfo.hidden) {
-        appInfo to null
-    } else {
-        appInfo to pkgIcon
-    }
 }

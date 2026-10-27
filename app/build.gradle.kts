@@ -71,7 +71,7 @@ android {
         applicationId = "com.xera.xclicker"
         versionCode = runCatching { "git rev-list --count HEAD".runCommand().toInt() }.getOrElse { 1 }
         val latestTag = runCatching { "git describe --tags --abbrev=0".runCommand() }.getOrNull()?.removePrefix("v") ?: "1.0.0"
-        versionName = latestTag + (gitInfo.versionNameSuffix ?: "")
+        versionName = latestTag
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -224,10 +224,8 @@ dependencies {
 
     implementation(project(":selector"))
 
-    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.service)
 
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.graphics)
@@ -236,7 +234,6 @@ dependencies {
     implementation(libs.compose.icons)
     implementation(libs.compose.preview)
     debugImplementation(libs.compose.tooling)
-    androidTestImplementation(libs.compose.junit4)
 
     implementation(libs.compose.activity)
     implementation(libs.compose.material3)
@@ -247,7 +244,6 @@ dependencies {
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso)
 
     compileOnly(libs.loc.annotation)
 

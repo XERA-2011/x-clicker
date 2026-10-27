@@ -3,9 +3,7 @@ package com.xera.xclicker.util
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Intent
-import android.content.pm.PackageInfo
 import android.graphics.Color
-import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.os.Looper
 import android.provider.AlarmClock
@@ -85,17 +83,6 @@ inline fun <reified T> toJson5String(value: T): String {
     }
     return json.encodeToJson5String(value, defaultJson5Config)
 }
-
-// https://github.com/gkd-kit/gkd/issues/924
-private val Drawable.safeDrawable: Drawable?
-    get() = if (intrinsicHeight > 0 && intrinsicWidth > 0) {
-        this
-    } else {
-        null
-    }
-
-val PackageInfo.pkgIcon: Drawable?
-    get() = applicationInfo?.loadIcon(app.packageManager)?.safeDrawable
 
 private fun Char.isAsciiLetter(): Boolean {
     return this in 'a'..'z' || this in 'A'..'Z'

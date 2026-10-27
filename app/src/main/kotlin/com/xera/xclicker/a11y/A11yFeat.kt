@@ -19,20 +19,19 @@ import com.xera.xclicker.util.UpdateTimeOption
 import com.xera.xclicker.util.checkSubsUpdate
 
 fun onA11yFeatEvent(event: AccessibilityEvent) = event.run {
-    if (event.eventType == STATE_CHANGED) {
-
-        if (event.packageName == launcherAppId) {
-
-            watchAutoUpdateSubs()
-        }
+    if (packageName == launcherAppId) {
+        watchAutoUpdateSubs()
     }
 }
 
+private var lastCheckTime = 0L
 private var lastUpdateSubsTime = 0L
 private fun watchAutoUpdateSubs() {
+    val t = System.currentTimeMillis()
+    if (t - lastCheckTime < 10_000L) return
+    lastCheckTime = t
     val i = storeFlow.value.updateSubsInterval
     if (i <= 0) return
-    val t = System.currentTimeMillis()
     if (t - lastUpdateSubsTime > i.coerceAtLeast(UpdateTimeOption.Everyday.value)) {
         lastUpdateSubsTime = t
         checkSubsUpdate()

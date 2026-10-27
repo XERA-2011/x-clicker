@@ -230,8 +230,10 @@ class A11yRuleEngine(val service: A11yCommonImpl) {
         if (querying) return
         // 无障碍从零启动时获取 safeActiveWindow 非常耗时
         if (byEvent == null && service.justStarted && !hasOthersService) return checkFutureStartJob()
-        scope.launchTry(queryDispatcher) {
-            querying = true
+        // Reserve the query slot before dispatching so a burst of events cannot enqueue
+        // several jobs before the first one starts on queryDispatcher.
+        querying = true
+        val queryJob = scope.launchTry(queryDispatcher) {
             val st = if (META.debuggable) System.currentTimeMillis() else 0L
             try {
                 if (META.debuggable) {
@@ -247,6 +249,11 @@ class A11yRuleEngine(val service: A11yCommonImpl) {
                     val et = System.currentTimeMillis() - st
                     Log.d("A11yRuleEngine", "startQueryJob end $et ms")
                 }
+            }
+        }
+        // Also release the slot if the service scope is cancelled before the coroutine starts.
+        queryJob.invokeOnCompletion {
+            synchronized(this) {
                 querying = false
             }
         }

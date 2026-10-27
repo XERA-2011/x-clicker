@@ -13,12 +13,18 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import com.google.android.accessibility.selecttospeak.SelectToSpeakService
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import com.xera.xclicker.appScope
 import com.xera.xclicker.a11y.A11yCommonImpl
 import com.xera.xclicker.a11y.A11yRuleEngine
 import com.xera.xclicker.a11y.topActivityFlow
 import com.xera.xclicker.a11y.updateTopActivity
+import com.xera.xclicker.store.storeFlow
 import com.xera.xclicker.store.updateEnableAutomator
 import com.xera.xclicker.util.AndroidTarget
 import com.xera.xclicker.util.AutomatorModeOption
@@ -117,13 +123,13 @@ private fun A11yService.useAliveOverlayView() {
     val wm by lazy { getSystemService(WINDOW_SERVICE) as WindowManager }
     fun removeA11View() {
         if (aliveView != null) {
-            wm.removeView(aliveView)
+            runCatching { wm.removeView(aliveView) }
             aliveView = null
         }
     }
 
     fun addA11View() {
-        removeA11View()
+        if (aliveView != null) return
         val tempView = View(context)
         val lp = WindowManager.LayoutParams().apply {
             type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
@@ -142,9 +148,30 @@ private fun A11yService.useAliveOverlayView() {
         } catch (e: Throwable) {
             aliveView = null
             LogUtils.d(e)
-            toast("添加无障碍保活失败\n请尝试重启无障碍")
+            toast("添加透明悬浮窗保活失败\n请尝试重启无障碍")
         }
     }
-    onA11yConnected { addA11View() }
-    onDestroyed { removeA11View() }
+
+    fun syncOverlay(enabled: Boolean) {
+        if (enabled) {
+            addA11View()
+        } else {
+            removeA11View()
+        }
+    }
+
+    var overlayJob: Job? = null
+    onA11yConnected {
+        overlayJob?.cancel()
+        overlayJob = appScope.launch {
+            storeFlow.map { it.enableStatusOverlay }.distinctUntilChanged().collect { enabled ->
+                syncOverlay(enabled)
+            }
+        }
+    }
+    onDestroyed {
+        overlayJob?.cancel()
+        overlayJob = null
+        removeA11View()
+    }
 }

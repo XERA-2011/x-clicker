@@ -6,9 +6,6 @@ const val ISSUES_URL = "${REPOSITORY_URL}/issues"
 const val FILE_SHORT_URL = "${REPOSITORY_URL}/releases/download/"
 const val IMPORT_SHORT_URL = "${REPOSITORY_URL}/"
 
-const val SERVER_SCRIPT_URL =
-    "https://registry.npmmirror.com/@xclicker-kit/config/latest/files/dist/server.js"
-
 const val HOME_PAGE_URL = REPOSITORY_URL
 
 const val LOCAL_SUBS_ID = -2L

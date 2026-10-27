@@ -272,6 +272,29 @@ fun SettingsPage() {
             }
 
             TextSwitch(
+                title = "透明悬浮窗保活",
+                subtitle = "减少系统后台限制，防止被系统查杀",
+                checked = store.enableStatusOverlay,
+                onCheckedChange = vm.viewModelScope.launchAsFn<Boolean> { enabled ->
+                    if (enabled) {
+                        mainVm.dialogFlow.waitResult(
+                            title = "开启透明悬浮窗保活？",
+                            text = "开启后，使用透明悬浮窗减少系统对应用后台运行的限制，但可能触发系统「正在其它应用的上层显示内容」通知",
+                            confirmText = "开启",
+                        )
+                    } else {
+                        mainVm.dialogFlow.waitResult(
+                            title = "关闭透明悬浮窗保活？",
+                            text = "关闭后，应用后台运行可能受到系统限制，影响无障碍点击服务持续运行",
+                            confirmText = "关闭",
+                        )
+                    }
+                    storeFlow.value = store.copy(
+                        enableStatusOverlay = enabled
+                    )
+                })
+
+            TextSwitch(
                 title = "后台隐藏",
                 subtitle = "在「最近任务」隐藏卡片",
                 checked = store.excludeFromRecents,
